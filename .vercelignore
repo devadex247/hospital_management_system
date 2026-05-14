@@ -1,0 +1,5 @@
+# Ignore the Streamlit source folder for function detection
+Hospital_management/
+venv/
+.env
+.git
