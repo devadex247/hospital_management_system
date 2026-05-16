@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import glob
 from openai import OpenAI
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, send_from_directory
 
 app = Flask(__name__)
 
@@ -23,17 +23,17 @@ def chat_api():
         return response, 200
         
     data = request.json
-    prompt = data.get("prompt")
+    messages = data.get("messages", [])
     system_message = data.get("system_message", "You are a helpful hospital management assistant.")
     
     try:
-        # Qwen2.5-72B via novita — no license approval needed, proper chat model
+        # Build message history with the system message
+        full_messages = [{"role": "system", "content": system_message}] + messages
+        
+        # Qwen 2.5 7B - Corrected ID
         completion = hf_client.chat.completions.create(
-            model="Qwen/Qwen2.5-72B-Instruct:novita",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
+            model="Qwen/Qwen2.5-7B-Instruct",
+            messages=full_messages,
         )
         resp = jsonify({"response": completion.choices[0].message.content})
         resp.headers.add("Access-Control-Allow-Origin", "*")
@@ -44,7 +44,7 @@ def chat_api():
         return resp, 500
 
 # Base directory for the hospital management app
-BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "Hospital_management")
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Hospital_management"))
 
 def get_file_content(path):
     full_path = os.path.join(BASE_DIR, path)
@@ -54,26 +54,48 @@ def get_file_content(path):
     return ""
 
 @app.route("/")
-def index():
-    # Gather all python files in the project to mount them in stlite
+def landing():
+    """Serve the landing page"""
+    content = get_file_content("index.html")
+    if not content:
+        return "Landing page not found", 404
+    return render_template_string(content)
+
+@app.route("/login")
+def login():
+    """Serve the custom login page"""
+    content = get_file_content("login.html")
+    if not content:
+        return "Login page not found", 404
+    
+    return render_template_string(content)
+
+@app.route("/app")
+def streamlit_app():
+    """Serve the stlite (Streamlit in WASM) application"""
     files = {}
     
     # Add root files
-    for f in ["app.py", "models.py", "hospital_manager.py"]:
+    for f in ["app.py", "models.py", "hospital_manager.py", "config.yaml"]:
         content = get_file_content(f)
         if content:
             files[f] = content
         
-    # Add files from subdirectories
-    for subdir in ["views", "services", "utils"]:
+    # Add files from subdirectories (including .py and .sql)
+    for subdir in ["views", "services", "utils", "database"]:
         subdir_path = os.path.join(BASE_DIR, subdir)
         if os.path.exists(subdir_path):
-            for f in glob.glob(os.path.join(subdir_path, "*.py")):
-                rel_path = os.path.relpath(f, BASE_DIR)
-                normalized_path = rel_path.replace("\\", "/")
-                content = get_file_content(rel_path)
-                if content:
-                    files[normalized_path] = content
+            # Find all files in the subdirectory
+            for root, dirs, filenames in os.walk(subdir_path):
+                for filename in filenames:
+                    if filename.endswith(".py") or filename.endswith(".sql"):
+                        f_path = os.path.join(root, filename)
+                        rel_path = os.path.relpath(f_path, BASE_DIR)
+                        normalized_path = rel_path.replace("\\", "/")
+                        with open(f_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+                        if content:
+                            files[normalized_path] = content
 
     # Pre-process content for JS Template Literals
     escaped_files = {}
@@ -96,16 +118,19 @@ def index():
     <title>Hospital Management System - AI Powered</title>
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.58.1/build/stlite.css"
+      href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.72.0/build/stlite.css"
     />
+    <style>
+        body { margin: 0; padding: 0; background: #0F172A; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
-    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.58.1/build/stlite.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.72.0/build/stlite.js"></script>
     <script>
       stlite.mount(
         {
-          requirements: ["python-dotenv", "pyodide-http", "requests"],
+          requirements: ["python-dotenv", "pyodide-http", "requests", "PyYAML", "sqlite3"],
           entrypoint: "app.py",
           files: {
             {% for filename, content in files.items() %}
@@ -115,6 +140,11 @@ def index():
           streamlitConfig: {
             "server.address": "0.0.0.0",
             "server.port": "8501",
+            "theme.base": "dark",
+            "theme.primaryColor": "#0EA5E9",
+            "theme.backgroundColor": "#0F172A",
+            "theme.secondaryBackgroundColor": "#1E293B",
+            "theme.textColor": "#F8FAFC"
           },
         },
         document.getElementById("root")
