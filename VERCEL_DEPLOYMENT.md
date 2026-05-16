@@ -37,13 +37,11 @@ Your app uses `.env` for AI integration. Since `.env` files should not be upload
 
 1.  Go to your **Project Settings** on Vercel.
 2.  Select **Environment Variables**.
-3.  Add the following (based on your `.env.example`):
-    - `OLLAMA_BASE_URL`: Your remote Ollama endpoint (e.g., a public URL via Ngrok).
-    - `OLLAMA_API_KEY`: Your API key if applicable.
-    - *Optional*: Any other keys used by `litellm` (e.g., `OPENAI_API_KEY`, `GROQ_API_KEY`).
+3.  Add the following:
+    - `HF_TOKEN`: Your Hugging Face API Token (needed for the Qwen 2.5 AI Assistant).
 
 > [!IMPORTANT]
-> Since this app runs via **stlite** in the browser, ensure your AI provider allows **CORS** from your Vercel domain. If using local Ollama, you must use a proxy or tunnel.
+> Since this app runs via **stlite** in the browser, ensure your backend in `api/index.py` has access to the `HF_TOKEN`. Also, verify that `.vercelignore` DOES NOT include `Hospital_management/`, otherwise the app will fail to load its source files.
 
 ---
 

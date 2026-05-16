@@ -1,5 +1,7 @@
-# Ignore the Streamlit source folder for function detection
-Hospital_management/
 venv/
 .env
 .git
+.gitignore
+push_to_github.bat
+push_to_github.sh
+VERCEL_DEPLOYMENT.md
