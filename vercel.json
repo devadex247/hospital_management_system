@@ -1,7 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "api/index.py": {
+    "api/*.py": {
       "includeFiles": "Hospital_management/**"
     }
   },
