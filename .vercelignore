@@ -1,7 +1,10 @@
-venv/
-.env
 .git
 .gitignore
 push_to_github.bat
 push_to_github.sh
 VERCEL_DEPLOYMENT.md
+venv/
+.env
+__pycache__/
+*.pyc
+.vercel/

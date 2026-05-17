@@ -1,0 +1,82 @@
+credentials:
+  usernames:
+    admin:
+      email: admin@hospital.com
+      name: Administrator
+      password: admin123
+      role: admin
+    doctor:
+      email: doctor@hospital.com
+      name: Dr. Smith
+      password: doctor123
+      role: doctor
+    # --- New Nigerian Doctor Accounts ---
+    doctor_okoro:
+      email: okoro@hospital.com
+      name: Dr. Chinonso Okoro
+      password: doc_pass123
+      role: doctor
+    doctor_adebayo:
+      email: adebayo@hospital.com
+      name: Dr. Adebayo Ogunlesi
+      password: doc_pass456
+      role: doctor
+    doctor_ngozi:
+      email: ngozi@hospital.com
+      name: Dr. Ngozi Idika
+      password: doc_pass789
+      role: doctor
+    doctor_ibrahim:
+      email: ibrahim@hospital.com
+      name: Dr. Ibrahim Musa
+      password: doc_pass012
+      role: doctor
+    doctor_funke:
+      email: funke@hospital.com
+      name: Dr. Funke Akindele
+      password: doc_pass345
+      role: doctor
+    staff:
+      email: staff@hospital.com
+      name: Staff Member
+      password: staff123
+      role: staff
+    patient:
+      email: patient@hospital.com
+      name: Patient User
+      password: patient123
+      role: patient
+    # --- New Nigerian Patient Accounts ---
+    patient_amaka:
+      email: amaka@hospital.com
+      name: Amaka Nnamani
+      password: pat_pass123
+      role: patient
+    patient_tunde:
+      email: tunde@hospital.com
+      name: Tunde Bakare
+      password: pat_pass456
+      role: patient
+    patient_aisha:
+      email: aisha@hospital.com
+      name: Aisha Yusuf
+      password: pat_pass789
+      role: patient
+    patient_emeka:
+      email: emeka@hospital.com
+      name: Emeka Uzoh
+      password: pat_pass012
+      role: patient
+    patient_blessing:
+      email: blessing@hospital.com
+      name: Blessing Effiong
+      password: pat_pass345
+      role: patient
+cookie:
+  expiry_days: 30
+  key: hospital_management_secret_key_2024  # Change this in production
+  name: hospital_management_cookie
+preauthorized:
+  emails:
+    - admin@hospital.com
+    - doctor@hospital.com

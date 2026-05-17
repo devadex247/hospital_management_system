@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MedOS AI</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        medical: {
+                            900: '#0F172A',
+                            800: '#1E293B',
+                            accent: '#0EA5E9',
+                            teal: '#14B8A6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0F172A;
+            color: #F8FAFC;
+            overflow: hidden;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .gradient-bg {
+            background: radial-gradient(circle at top right, rgba(14, 165, 233, 0.15), transparent),
+                        radial-gradient(circle at bottom left, rgba(20, 184, 166, 0.15), transparent);
+        }
+        .input-field {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #0EA5E9;
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-medical-accent selection:text-white min-h-screen flex items-center justify-center p-4 relative gradient-bg">
+
+    <!-- Back to Home -->
+    <a href="/" class="absolute top-8 left-8 flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group">
+        <i data-lucide="arrow-left" class="w-4 h-4 group-hover:-translate-x-1 transition-transform"></i>
+        Back to Home
+    </a>
+
+    <!-- Login Container -->
+    <div class="w-full max-w-md animate-in fade-in zoom-in duration-700">
+        <div class="text-center mb-8">
+            <div class="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br from-medical-accent to-medical-teal items-center justify-center shadow-xl shadow-medical-accent/20 mb-6">
+                <i data-lucide="activity" class="w-10 h-10 text-white"></i>
+            </div>
+            <h1 class="text-3xl font-display font-bold mb-2">Welcome Back</h1>
+            <p class="text-slate-400">Sign in to your MedOS account to continue.</p>
+        </div>
+
+        <div class="glass-panel rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+            <!-- Decorative Glow -->
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-medical-accent/20 rounded-full blur-3xl"></div>
+            
+            <form action="/app" method="GET" class="space-y-6 relative z-10">
+                <!-- Role Selection -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 px-1">Access Role</label>
+                    <select id="role-select" name="role" class="input-field w-full rounded-xl px-4 py-3 text-sm text-white appearance-none cursor-pointer">
+                        <option value="admin">Administrator</option>
+                        <option value="doctor">Medical Doctor</option>
+                        <option value="staff">Hospital Staff</option>
+                        <option value="patient">Patient Portal</option>
+                    </select>
+                </div>
+
+                <!-- Username -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 px-1">Username</label>
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+                        <input type="text" name="username" placeholder="Enter your username" class="input-field w-full rounded-xl pl-12 pr-4 py-3 text-sm text-white" required>
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 px-1">Password</label>
+                    <div class="relative">
+                        <i data-lucide="lock" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+                        <input type="password" name="password" placeholder="••••••••" class="input-field w-full rounded-xl pl-12 pr-4 py-3 text-sm text-white" required>
+                    </div>
+                    <div class="flex justify-end mt-2">
+                        <a href="#" class="text-xs text-medical-accent hover:underline">Forgot password?</a>
+                    </div>
+                </div>
+
+                <!-- Remember Me -->
+                <div class="flex items-center gap-2 px-1">
+                    <input type="checkbox" id="remember" class="rounded border-white/10 bg-white/5 text-medical-accent focus:ring-medical-accent">
+                    <label for="remember" class="text-xs text-slate-400">Remember this device</label>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="w-full bg-medical-accent hover:bg-sky-400 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-medical-accent/20 transform hover:-translate-y-1 active:scale-[0.98]">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="mt-8 pt-6 border-t border-white/5 text-center">
+                <p class="text-xs text-slate-500">
+                    Don't have an account? <a href="#" class="text-medical-accent font-semibold hover:underline">Contact Administrator</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Security Badge -->
+        <div class="mt-8 flex items-center justify-center gap-2 text-slate-500">
+            <i data-lucide="shield-check" class="w-4 h-4 text-medical-teal"></i>
+            <span class="text-[10px] uppercase tracking-widest font-bold">Secure Enterprise Grade Infrastructure</span>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Handle URL parameter for role
+        const urlParams = new URLSearchParams(window.location.search);
+        const role = urlParams.get('role');
+        if (role) {
+            const select = document.getElementById('role-select');
+            if (select) select.value = role;
+        }
+    </script>
+</body>
+</html>
