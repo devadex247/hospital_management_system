@@ -7,11 +7,15 @@ from flask import Flask, render_template_string, request, jsonify, send_from_dir
 
 app = Flask(__name__)
 
-# Hugging Face inference router client (OpenAI-compatible)
-hf_client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=os.environ.get("HF_TOKEN", ""),
-)
+# Hugging Face inference router client (OpenAI-compatible) - Lazy Initialized
+def get_hf_client():
+    token = os.environ.get("HF_TOKEN", "")
+    if not token:
+        raise ValueError("HF_TOKEN environment variable is missing. Please set your Hugging Face Token in the Vercel Dashboard Settings.")
+    return OpenAI(
+        base_url="https://router.huggingface.co/v1",
+        api_key=token,
+    )
 
 @app.route("/api/chat", methods=["POST", "OPTIONS"])
 def chat_api():
@@ -30,8 +34,11 @@ def chat_api():
         # Build message history with the system message
         full_messages = [{"role": "system", "content": system_message}] + messages
         
+        # Initialize client lazily to prevent startup errors
+        client = get_hf_client()
+        
         # Qwen 2.5 7B - Corrected ID
-        completion = hf_client.chat.completions.create(
+        completion = client.chat.completions.create(
             model="Qwen/Qwen2.5-7B-Instruct",
             messages=full_messages,
         )
