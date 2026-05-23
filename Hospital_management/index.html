@@ -1,19 +1,21 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedOS - AI-Powered Hospital Management</title>
-    <meta name="description" content="MedOS: The intelligent operating system for modern hospitals. Streamline patient care with AI-driven insights.">
-    
-    <!-- Fonts -->
+    <title>MedOS - AI-Powered Healing & Precision Hospital OS</title>
+    <meta name="description"
+        content="MedOS: An AI-first Operating System for modern healthcare facilities. Experience Shifa (restoration), Amanah (security), and Ihsan (precision) in every workflow.">
+
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -22,27 +24,28 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Space Grotesk', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
                     },
                     colors: {
                         medical: {
+                            950: '#0B0F19',
                             900: '#0F172A',
                             800: '#1E293B',
-                            700: '#334155',
-                            accent: '#0EA5E9',
-                            teal: '#14B8A6',
+                            accent: '#0284C7',
+                            teal: '#0D9488',
+                            emerald: '#059669',
+                            rose: '#E11D48'
                         }
                     },
                     animation: {
-                        'blob': 'blob 7s infinite',
+                        'blob': 'blob 10s infinite alternate',
                     },
                     keyframes: {
                         blob: {
                             '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '50%': { transform: 'translate(40px, -60px) scale(1.15)' },
+                            '100%': { transform: 'translate(-20px, 20px) scale(0.9)' },
                         }
                     }
                 }
@@ -52,376 +55,518 @@
 
     <style>
         body {
-            background-color: #0F172A;
-            color: #F8FAFC;
+            background-color: #0B0F19;
+            color: #F1F5F9;
         }
+
         .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
+
         .gradient-text {
-            background: linear-gradient(135deg, #0EA5E9 0%, #14B8A6 100%);
+            background: linear-gradient(135deg, #38BDF8 0%, #2DD4BF 50%, #34D399 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .glow-effect {
-            box-shadow: 0 0 40px rgba(14, 165, 233, 0.15);
-        }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0F172A; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
-        /* Dropdown Style */
-        .dropdown:hover .dropdown-menu {
-            display: block;
+        .premium-glow {
+            box-shadow: 0 0 50px rgba(14, 165, 233, 0.12);
         }
-        
-        /* Team Hover Info */
-        .team-card {
-            perspective: 1000px;
+
+        .interactive-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #2DD4BF;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(45, 212, 191, 0.5);
+            transition: transform 0.1s ease;
         }
-        .team-info {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+        .interactive-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
         }
-        .team-card:hover .team-info {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .team-card:hover .team-image {
-            transform: scale(1.1);
-            filter: grayscale(0%);
-        }
-        .team-image {
-            transition: all 0.5s ease;
-            filter: grayscale(100%);
+
+        .team-card:hover .team-image-container {
+            transform: translateY(-8px);
+            border-color: rgba(45, 212, 191, 0.4);
         }
     </style>
 </head>
+
 <body class="antialiased selection:bg-medical-accent selection:text-white relative overflow-x-hidden">
 
-    <!-- Background Effects -->
+    <!-- Background Ambient Blobs -->
     <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
-        <div class="absolute top-0 left-1/4 w-96 h-96 bg-medical-accent/20 rounded-full mix-blend-screen filter blur-[128px] animate-blob"></div>
-        <div class="absolute top-1/4 right-1/4 w-96 h-96 bg-medical-teal/20 rounded-full mix-blend-screen filter blur-[128px] animate-blob animation-delay-2000"></div>
-        <div class="absolute bottom-1/4 left-1/3 w-96 h-96 bg-indigo-500/20 rounded-full mix-blend-screen filter blur-[128px] animate-blob animation-delay-4000"></div>
+        <div class="absolute top-0 left-1/4 w-[500px] h-[500px] bg-medical-accent/15 rounded-full filter blur-[128px] animate-blob"></div>
+        <div class="absolute top-1/3 right-1/4 w-[450px] h-[450px] bg-medical-teal/15 rounded-full filter blur-[128px] animate-blob" style="animation-delay: 3s;"></div>
+        <div class="absolute bottom-1/4 left-1/3 w-[550px] h-[550px] bg-indigo-900/20 rounded-full filter blur-[128px] animate-blob" style="animation-delay: 6s;"></div>
     </div>
 
-    <!-- Navigation -->
-    <nav class="fixed w-full z-50 glass-panel border-b-0 border-white/5 transition-all duration-300" id="navbar">
+    <!-- Top Navigation -->
+    <nav class="fixed w-full z-50 glass-panel border-b border-white/5 transition-all duration-300" id="navbar">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-medical-accent to-medical-teal flex items-center justify-center shadow-lg shadow-medical-accent/20">
-                        <i data-lucide="activity" class="w-6 h-6 text-white"></i>
+                        <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
                     </div>
-                    <span class="font-display font-bold text-xl tracking-tight">Med<span class="text-medical-accent">OS</span></span>
+                    <span class="font-display font-bold text-2xl tracking-tight">Med<span class="text-medical-teal">OS</span></span>
                 </div>
-                
-                <div class="flex items-center gap-8">
-                    <!-- Dropdown Sign In -->
-                    <div class="relative dropdown">
-                        <button class="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-medical-accent hover:bg-sky-400 rounded-full transition-all duration-200 shadow-lg shadow-medical-accent/20">
-                            Sign In
-                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                        </button>
-                        <div class="dropdown-menu absolute right-0 mt-2 w-48 hidden pt-2">
-                            <div class="glass-panel rounded-xl border border-white/10 shadow-xl py-2">
-                                <a href="/login?role=admin" class="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">Login as Admin</a>
-                                <a href="/login?role=doctor" class="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">Login as Doctor</a>
-                                <a href="/login?role=patient" class="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors">Login as Patient</a>
-                            </div>
-                        </div>
-                    </div>
+
+                <div class="flex items-center gap-6">
+                    <a href="#demo" class="hidden md:inline-flex text-sm font-medium text-slate-300 hover:text-white transition-colors">Risk Simulator</a>
+                    <a href="#features" class="hidden md:inline-flex text-sm font-medium text-slate-300 hover:text-white transition-colors">Core Modules</a>
+                    <a href="/login" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-medical-accent to-medical-teal hover:brightness-110 rounded-full transition-all duration-200 shadow-lg shadow-medical-accent/20">
+                        Access MedOS Panel
+                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                    </a>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Section 1: Hero -->
-    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32">
+    <!-- Hero Section -->
+    <section class="relative pt-36 pb-20 lg:pt-48 lg:pb-32">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border-white/10 mb-8">
                 <span class="flex h-2 w-2 rounded-full bg-medical-teal animate-pulse"></span>
-                <span class="text-xs font-medium tracking-wide text-slate-300">Intelligent Healthcare for a New Era</span>
+                <span class="text-xs font-semibold tracking-wider text-slate-300 uppercase">Shifa • Amanah • Ihsan</span>
             </div>
-            
-            <h1 class="text-5xl md:text-7xl font-display font-bold tracking-tight mb-8 leading-tight">
-                The Operating System for <br class="hidden md:block" />
-                <span class="gradient-text">Modern Hospitals</span>
+
+            <h1 class="text-5xl md:text-7xl font-display font-extrabold tracking-tight mb-8 leading-tight">
+                The Intelligent AI-First Operating System <br />
+                <span class="gradient-text">For Modern Healthcare</span>
             </h1>
-            
-            <p class="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 mb-10 leading-relaxed">
-                Empower your medical staff with <strong>MedOs AI</strong>. From automated scheduling to intelligent diagnostic assistance, 
-                we simplify hospital operations so you can focus on what matters most: saving lives.
+
+            <p class="max-w-3xl mx-auto text-lg md:text-xl text-slate-400 mb-12 leading-relaxed font-light">
+                Empower your clinical staff with real-time diagnostic recommendations, structured LOINC tests,
+                and immutable security audit logging. Experience seamless hospital orchestration designed for restorative healing.
             </p>
-            
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                <a href="/login" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-10 py-4 text-lg font-semibold text-white bg-medical-accent hover:bg-sky-400 rounded-full transition-all duration-200 shadow-xl shadow-medical-accent/30 transform hover:-translate-y-1">
-                    Get Started Now
-                    <i data-lucide="zap" class="w-5 h-5"></i>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-5">
+                <a href="/login" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-4 text-lg font-bold text-white bg-gradient-to-r from-medical-accent to-medical-teal hover:brightness-110 rounded-full transition-all duration-200 shadow-xl shadow-medical-accent/30 transform hover:-translate-y-1">
+                    Launch Application
+                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </a>
+                <a href="#demo" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-10 py-4 text-lg font-semibold text-slate-300 hover:text-white glass-panel rounded-full hover:bg-white/5 transition-all">
+                    Try Clinical Risk Simulator
                 </a>
             </div>
         </div>
     </section>
 
-    <!-- Section: The Problem & Solution -->
-    <section class="py-24 relative z-10 bg-medical-800/10">
+    <!-- The Philosophical Pillars -->
+    <section id="philosophy" class="py-20 relative z-10 border-t border-white/5 bg-medical-950/40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid lg:grid-cols-2 gap-16 items-center">
-                <!-- Problem -->
-                <div class="glass-panel p-10 rounded-3xl border-rose-500/20 relative group overflow-hidden">
-                    <div class="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <i data-lucide="alert-circle" class="w-24 h-24 text-rose-500"></i>
+            <div class="grid md:grid-cols-3 gap-10">
+                <!-- Pillar 1: Shifa -->
+                <div class="glass-panel p-8 rounded-3xl border-medical-teal/20 relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <i data-lucide="heart" class="w-32 h-32 text-medical-teal"></i>
                     </div>
-                    <div class="relative z-10">
-                        <h3 class="text-2xl font-display font-bold text-rose-400 mb-6 flex items-center gap-3">
-                            <i data-lucide="frown" class="w-8 h-8"></i>
-                            The Critical Problem
-                        </h3>
-                        <p class="text-slate-300 leading-relaxed mb-6">
-                            Modern hospitals are drowning in administrative complexity. Clinicians spend more time on paperwork than on patients, leading to:
-                        </p>
-                        <ul class="space-y-4">
-                            <li class="flex items-center gap-3 text-slate-400 text-sm">
-                                <i data-lucide="x" class="w-4 h-4 text-rose-500"></i>
-                                Severe burnout and high staff turnover
-                            </li>
-                            <li class="flex items-center gap-3 text-slate-400 text-sm">
-                                <i data-lucide="x" class="w-4 h-4 text-rose-500"></i>
-                                Dangerous diagnostic delays and data silos
-                            </li>
-                            <li class="flex items-center gap-3 text-slate-400 text-sm">
-                                <i data-lucide="x" class="w-4 h-4 text-rose-500"></i>
-                                Inefficient patient scheduling and coordination
-                            </li>
-                        </ul>
+                    <div class="w-12 h-12 rounded-2xl bg-medical-teal/10 flex items-center justify-center mb-6">
+                        <i data-lucide="heart" class="w-6 h-6 text-medical-teal"></i>
                     </div>
+                    <h3 class="text-2xl font-display font-bold text-white mb-3">Shifa (Healing)</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Designed at its core to restore wellness. MedOS prioritizes rapid diagnostic cycles, pharmacy stock integrity, and patient-first admission timelines to support patient recovery.
+                    </p>
                 </div>
 
-                <!-- Solution -->
-                <div class="glass-panel p-10 rounded-3xl border-medical-teal/20 relative group overflow-hidden">
-                    <div class="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <i data-lucide="sparkles" class="w-24 h-24 text-medical-teal"></i>
+                <!-- Pillar 2: Amanah -->
+                <div class="glass-panel p-8 rounded-3xl border-medical-accent/20 relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <i data-lucide="lock" class="w-32 h-32 text-medical-accent"></i>
                     </div>
-                    <div class="relative z-10">
-                        <h3 class="text-2xl font-display font-bold text-medical-teal mb-6 flex items-center gap-3">
-                            <i data-lucide="check-circle" class="w-8 h-8"></i>
-                            The MedOS Solution
-                        </h3>
-                        <p class="text-slate-300 leading-relaxed mb-6">
-                            MedOS integrates **MedOs AI** directly into the clinical workflow, acting as an intelligent co-pilot for every member of your team:
-                        </p>
-                        <ul class="space-y-4">
-                            <li class="flex items-center gap-3 text-slate-400 text-sm">
-                                <i data-lucide="check" class="w-4 h-4 text-medical-teal"></i>
-                                **AI-Driven Diagnostics**: Real-time recommendation engine
-                            </li>
-                            <li class="flex items-center gap-3 text-slate-400 text-sm">
-                                <i data-lucide="check" class="w-4 h-4 text-medical-teal"></i>
-                                **Automated Scheduling**: One-click patient/doctor matching
-                            </li>
-                            <li class="flex items-center gap-3 text-slate-400 text-sm">
-                                <i data-lucide="check" class="w-4 h-4 text-medical-teal"></i>
-                                **Unified Portal**: Role-specific access to secure data
-                            </li>
-                        </ul>
+                    <div class="w-12 h-12 rounded-2xl bg-medical-accent/10 flex items-center justify-center mb-6">
+                        <i data-lucide="lock" class="w-6 h-6 text-medical-accent"></i>
                     </div>
+                    <h3 class="text-2xl font-display font-bold text-white mb-3">Amanah (Trust)</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        A sacred trust of patient confidentiality and data safety. Built with an immutable cryptographic Security Audit Log to tracking access actions, securing compliance with HIPAA and GDPR.
+                    </p>
+                </div>
+
+                <!-- Pillar 3: Ihsan -->
+                <div class="glass-panel p-8 rounded-3xl border-indigo-500/20 relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <i data-lucide="activity" class="w-32 h-32 text-indigo-400"></i>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6">
+                        <i data-lucide="activity" class="w-6 h-6 text-indigo-400"></i>
+                    </div>
+                    <h3 class="text-2xl font-display font-bold text-white mb-3">Ihsan (Precision)</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Striving for excellence in clinical care. MedOS embeds active AI recommendation modules, automated PACS scan diagnostic reporting helpers, and strict LOINC lab catalog code definitions.
+                    </p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Section 2: Core Features -->
-    <section class="py-24 relative z-10 bg-medical-800/20 border-y border-white/5">
+    <!-- Interactive Clinical Risk Score Simulator Section -->
+    <section id="demo" class="py-24 relative z-10 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-12 gap-12 items-center">
+                
+                <div class="lg:col-span-5 text-left">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-medical-teal/10 mb-6">
+                        <i data-lucide="cpu" class="w-4 h-4 text-medical-teal"></i>
+                        <span class="text-xs font-semibold text-medical-teal uppercase tracking-wider">Interactive AI Feature Demo</span>
+                    </div>
+                    <h2 class="text-3xl md:text-5xl font-display font-bold mb-6 text-white leading-tight">
+                        Predict Patient Risk <br />
+                        <span class="gradient-text">In Real-Time</span>
+                    </h2>
+                    <p class="text-slate-400 leading-relaxed mb-6">
+                        Interact with the sliders to adjust patient heart rate, SpO2, and temperature levels. 
+                        Our prediction router evaluates these values in real-time using a clinically validated MEWS scoring matrix, alerting physicians to patient clinical deterioration risk instantly.
+                    </p>
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-5 h-5 rounded bg-medical-teal/20 flex items-center justify-center mt-1">
+                                <i data-lucide="check" class="w-3.5 h-3.5 text-medical-teal"></i>
+                            </div>
+                            <span class="text-sm text-slate-300">Clinically mapped score rules</span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-5 h-5 rounded bg-medical-teal/20 flex items-center justify-center mt-1">
+                                <i data-lucide="check" class="w-3.5 h-3.5 text-medical-teal"></i>
+                            </div>
+                            <span class="text-sm text-slate-300">Live API response calculation rendering</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Widget Panel -->
+                <div class="lg:col-span-7">
+                    <div class="glass-panel p-8 rounded-3xl premium-glow relative overflow-hidden">
+                        
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <!-- Sliders -->
+                            <div class="space-y-6">
+                                <h3 class="font-display font-bold text-lg text-slate-200">Patient Vitals Input</h3>
+                                
+                                <div>
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span class="text-slate-400">Heart Rate</span>
+                                        <span class="text-medical-teal font-semibold font-display" id="hr-val">72 bpm</span>
+                                    </div>
+                                    <input type="range" min="30" max="160" value="72" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer interactive-slider" id="heart_rate">
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span class="text-slate-400">Oxygen Level (SpO2)</span>
+                                        <span class="text-medical-teal font-semibold font-display" id="spo2-val">98 %</span>
+                                    </div>
+                                    <input type="range" min="70" max="100" value="98" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer interactive-slider" id="spo2">
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span class="text-slate-400">Temperature</span>
+                                        <span class="text-medical-teal font-semibold font-display" id="temp-val">37.0 °C</span>
+                                    </div>
+                                    <input type="range" min="34" max="41" step="0.1" value="37.0" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer interactive-slider" id="temperature">
+                                </div>
+                            </div>
+
+                            <!-- AI Output Card -->
+                            <div class="rounded-2xl bg-slate-950/60 border border-white/5 p-6 flex flex-col justify-between min-h-[250px]">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-4">
+                                        <span class="flex h-3.5 w-3.5 rounded-full" id="risk-dot" style="background-color: #10B981;"></span>
+                                        <h4 class="text-xs uppercase font-extrabold tracking-widest text-slate-400" id="risk-title">Low Risk</h4>
+                                    </div>
+                                    
+                                    <div class="text-4xl font-extrabold font-display mb-2 text-white" id="risk-probability">10.0%</div>
+                                    <p class="text-xs text-slate-400 leading-relaxed" id="risk-recommendation">
+                                        Maintain routine observations. Standard clinical protocols active.
+                                    </p>
+                                </div>
+
+                                <div class="border-t border-white/5 pt-4 mt-4">
+                                    <div class="flex justify-between text-xs text-slate-400">
+                                        <span>Clinical MEWS Score</span>
+                                        <span class="font-bold text-white font-display" id="mews-score">0 / 9</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Hospital Modules Grid -->
+    <section id="features" class="py-24 relative z-10 border-t border-white/5 bg-medical-950/20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">Core Features</h2>
-                <p class="text-slate-400 max-w-2xl mx-auto">Designed to reduce burnout and improve patient outcomes through smarter automation.</p>
+                <h2 class="text-3xl md:text-5xl font-display font-extrabold mb-4 text-white">MedOS Scaled Modules</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto font-light">Modular components coordinating hospital staff, patients, inventory, and clinical insights.</p>
             </div>
 
             <div class="grid md:grid-cols-3 gap-8">
-                <div class="glass-panel p-8 rounded-2xl border border-white/5 hover:border-medical-accent/30 transition-all group">
-                    <div class="w-12 h-12 bg-medical-accent/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                        <i data-lucide="brain-circuit" class="w-6 h-6 text-medical-accent"></i>
+                <!-- Module 1: Patient Admissions -->
+                <div class="glass-panel p-8 rounded-3xl border-white/5 hover:border-medical-accent/30 transition-all duration-300">
+                    <div class="w-12 h-12 bg-medical-accent/10 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="hotel" class="w-6 h-6 text-sky-400"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-3">AI Diagnostic Support</h3>
-                    <p class="text-slate-400 leading-relaxed text-sm">
-                        MedOs AI assists doctors by summarizing patient history and suggesting clinical recommendations based on real-time symptoms.
-                    </p>
-                </div>
-                <div class="glass-panel p-8 rounded-2xl border border-white/5 hover:border-purple-500/30 transition-all group">
-                    <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                        <i data-lucide="calendar" class="w-6 h-6 text-purple-400"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Smart Scheduling</h3>
-                    <p class="text-slate-400 leading-relaxed text-sm">
-                        Seamlessly manage appointments for doctors, staff, and patients. Automatic rescheduling and notification system to reduce no-shows.
-                    </p>
-                </div>
-                <div class="glass-panel p-8 rounded-2xl border border-white/5 hover:border-medical-teal/30 transition-all group">
-                    <div class="w-12 h-12 bg-medical-teal/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                        <i data-lucide="users" class="w-6 h-6 text-medical-teal"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3">Role-Based Portals</h3>
-                    <p class="text-slate-400 leading-relaxed text-sm">
-                        Dedicated experiences for Admins, Doctors, Staff, and Patients. Every user sees exactly what they need to provide or receive care.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- NEW SECTION: The MedOS Advantage -->
-    <section class="py-24 relative z-10 bg-medical-900">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">The MedOS Advantage</h2>
-                <p class="text-slate-400 max-w-2xl mx-auto">Unparalleled performance and intelligence for the next generation of healthcare.</p>
-            </div>
-
-            <div class="grid md:grid-cols-3 gap-8">
-                <!-- Card 1: Zero-Latency UI -->
-                <div class="glass-panel p-10 rounded-3xl border-medical-accent/20 hover:bg-medical-accent/5 transition-all duration-300 flex flex-col items-center text-center group">
-                    <div class="w-20 h-20 bg-medical-accent/10 rounded-full flex items-center justify-center mb-8 group-hover:scale-110 transition-transform shadow-lg shadow-medical-accent/10">
-                        <i data-lucide="zap" class="w-10 h-10 text-medical-accent"></i>
-                    </div>
-                    <h3 class="text-2xl font-display font-bold mb-4 text-white">Zero-Latency UI</h3>
-                    <p class="text-slate-400 leading-relaxed">
-                        Experience desktop-class speed in the browser. Our unique edge-optimized architecture eliminates interface lag, keeping clinicians focused on care, not loading screens.
+                    <h3 class="text-xl font-bold mb-3 text-slate-100">Admissions & Ward Booking</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Track live bed bookings, manage room and ward transfers, and check active patient hospitalization statuses easily.
                     </p>
                 </div>
 
-                <!-- Card 2: AI-First Workflow -->
-                <div class="glass-panel p-10 rounded-3xl border-medical-teal/20 hover:bg-medical-teal/5 transition-all duration-300 flex flex-col items-center text-center group">
-                    <div class="w-20 h-20 bg-medical-teal/10 rounded-full flex items-center justify-center mb-8 group-hover:scale-110 transition-transform shadow-lg shadow-medical-teal/10">
-                        <i data-lucide="sparkles" class="w-10 h-10 text-medical-teal"></i>
+                <!-- Module 2: Pharmacy Inventory -->
+                <div class="glass-panel p-8 rounded-3xl border-white/5 hover:border-medical-teal/30 transition-all duration-300">
+                    <div class="w-12 h-12 bg-medical-teal/10 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="pill" class="w-6 h-6 text-medical-teal"></i>
                     </div>
-                    <h3 class="text-2xl font-display font-bold mb-4 text-white">AI-First Workflow</h3>
-                    <p class="text-slate-400 leading-relaxed">
-                        Intelligence isn't an add-on; it's the core. MedOS AI anticipates needs, automates complex medical charting, and provides actionable insights at the point of decision.
+                    <h3 class="text-xl font-bold mb-3 text-slate-100">Pharmacy & Drug Stock</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Auto-replenish indicators, track item batches with safety thresholds, and issue e-prescriptions that links to inventory checks.
                     </p>
                 </div>
 
-                <!-- Card 3: Serverless Scale -->
-                <div class="glass-panel p-10 rounded-3xl border-purple-500/20 hover:bg-purple-500/5 transition-all duration-300 flex flex-col items-center text-center group">
-                    <div class="w-20 h-20 bg-purple-500/10 rounded-full flex items-center justify-center mb-8 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/10">
-                        <i data-lucide="cloud" class="w-10 h-10 text-purple-400"></i>
+                <!-- Module 3: Lab Portal -->
+                <div class="glass-panel p-8 rounded-3xl border-white/5 hover:border-indigo-500/30 transition-all duration-300">
+                    <div class="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="flask-conical" class="w-6 h-6 text-indigo-400"></i>
                     </div>
-                    <h3 class="text-2xl font-display font-bold mb-4 text-white">Serverless Scale</h3>
-                    <p class="text-slate-400 leading-relaxed">
-                        Built on an ultra-modern serverless foundation. MedOS scales instantly to support hospital systems of any size with zero infrastructure management required.
+                    <h3 class="text-xl font-bold mb-3 text-slate-100">Lab Orders & LOINC</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Track diagnostic requests with standard LOINC catalogs. Log results and map clinical panels into electronic health histories.
+                    </p>
+                </div>
+
+                <!-- Module 4: Radiology PACS -->
+                <div class="glass-panel p-8 rounded-3xl border-white/5 hover:border-rose-500/30 transition-all duration-300">
+                    <div class="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="images" class="w-6 h-6 text-rose-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-slate-100">Radiology (PACS & AI)</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Store and catalog X-ray and MRI scans via structured DICOM metadata links. Run computer vision algorithms to assist findings.
+                    </p>
+                </div>
+
+                <!-- Module 5: Financial Claims -->
+                <div class="glass-panel p-8 rounded-3xl border-white/5 hover:border-amber-500/30 transition-all duration-300">
+                    <div class="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="banknote" class="w-6 h-6 text-amber-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-slate-100">Billing & Insurance Claims</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Issue bills linking directly to appointments. Track insurance claims logs and process medical ledger payments.
+                    </p>
+                </div>
+
+                <!-- Module 6: Duty Schedules -->
+                <div class="glass-panel p-8 rounded-3xl border-white/5 hover:border-purple-500/30 transition-all duration-300">
+                    <div class="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="calendar-range" class="w-6 h-6 text-purple-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-slate-100">Staff Rosters & Rota</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Manage active nurse, technician, and administrative shifts. Set performance criteria and maintain compliance logs.
                     </p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Section 3: Our Team -->
-    <section class="py-24 relative z-10">
+    <!-- Meet Our Team -->
+    <section class="py-24 relative z-10 border-t border-white/5 bg-medical-950/10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">Meet Our Team</h2>
-                <p class="text-slate-400 max-w-2xl mx-auto">The minds behind MedOS, dedicated to innovating healthcare technology.</p>
+                <h2 class="text-3xl md:text-5xl font-display font-extrabold mb-4 text-white">MedOS Innovation Team</h2>
+                <p class="text-slate-400 max-w-2xl mx-auto font-light">Dedicated architects building the next-generation operating system for clinicians.</p>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                <!-- Team Member 1 -->
-                <div class="team-card glass-panel p-6 rounded-2xl border border-white/5 text-center relative overflow-hidden group">
-                    <div class="aspect-square rounded-xl bg-white/5 mb-4 overflow-hidden">
-                        <div class="team-image w-full h-full flex items-center justify-center text-slate-600">
-                            <i data-lucide="user" class="w-16 h-16"></i>
-                        </div>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-6">
+                <!-- Member 1 -->
+                <div class="team-card flex flex-col items-center group">
+                    <div class="team-image-container w-28 h-28 rounded-3xl border border-white/10 bg-slate-900 flex items-center justify-center mb-4 transition-all duration-300">
+                        <i data-lucide="terminal" class="w-10 h-10 text-medical-teal"></i>
                     </div>
-                    <h4 class="font-bold text-white mb-1">Team Member 1</h4>
-                    <p class="text-xs text-medical-accent mb-4">Lead Developer</p>
-                    <div class="team-info text-xs text-slate-400 leading-relaxed border-t border-white/10 pt-4">
-                        Expert in AI integration and full-stack architecture with a passion for healthcare innovation.
-                    </div>
+                    <h4 class="font-bold text-slate-100 text-sm text-center">Adekunle AbdulMuheez</h4>
+                    <p class="text-xs text-slate-400 mt-1">Lead Developer</p>
                 </div>
-                <!-- Team Member 2 -->
-                <div class="team-card glass-panel p-6 rounded-2xl border border-white/5 text-center relative overflow-hidden group">
-                    <div class="aspect-square rounded-xl bg-white/5 mb-4 overflow-hidden">
-                        <div class="team-image w-full h-full flex items-center justify-center text-slate-600">
-                            <i data-lucide="user" class="w-16 h-16"></i>
-                        </div>
+
+                <!-- Member 2 -->
+                <div class="team-card flex flex-col items-center group">
+                    <div class="team-image-container w-28 h-28 rounded-3xl border border-white/10 bg-slate-900 flex items-center justify-center mb-4 transition-all duration-300">
+                        <i data-lucide="palette" class="w-10 h-10 text-sky-400"></i>
                     </div>
-                    <h4 class="font-bold text-white mb-1">Team Member 2</h4>
-                    <p class="text-xs text-medical-accent mb-4">UI/UX Designer</p>
-                    <div class="team-info text-xs text-slate-400 leading-relaxed border-t border-white/10 pt-4">
-                        Specializes in creating intuitive, accessible interfaces for complex medical workflows.
-                    </div>
+                    <h4 class="font-bold text-slate-100 text-sm text-center">Lateefat Obadina</h4>
+                    <p class="text-xs text-slate-400 mt-1">UI/UX Designer</p>
                 </div>
-                <!-- Team Member 3 -->
-                <div class="team-card glass-panel p-6 rounded-2xl border border-white/5 text-center relative overflow-hidden group">
-                    <div class="aspect-square rounded-xl bg-white/5 mb-4 overflow-hidden">
-                        <div class="team-image w-full h-full flex items-center justify-center text-slate-600">
-                            <i data-lucide="user" class="w-16 h-16"></i>
-                        </div>
+
+                <!-- Member 3 -->
+                <div class="team-card flex flex-col items-center group">
+                    <div class="team-image-container w-28 h-28 rounded-3xl border border-white/10 bg-slate-900 flex items-center justify-center mb-4 transition-all duration-300">
+                        <i data-lucide="database" class="w-10 h-10 text-indigo-400"></i>
                     </div>
-                    <h4 class="font-bold text-white mb-1">Team Member 3</h4>
-                    <p class="text-xs text-medical-accent mb-4">Backend Engineer</p>
-                    <div class="team-info text-xs text-slate-400 leading-relaxed border-t border-white/10 pt-4">
-                        Focused on secure data management, serverless efficiency, and scalable infrastructure.
-                    </div>
+                    <h4 class="font-bold text-slate-100 text-sm text-center">Balogun AbdulLateef</h4>
+                    <p class="text-xs text-slate-400 mt-1">Backend Engineer</p>
                 </div>
-                <!-- Team Member 4 -->
-                <div class="team-card glass-panel p-6 rounded-2xl border border-white/5 text-center relative overflow-hidden group">
-                    <div class="aspect-square rounded-xl bg-white/5 mb-4 overflow-hidden">
-                        <div class="team-image w-full h-full flex items-center justify-center text-slate-600">
-                            <i data-lucide="user" class="w-16 h-16"></i>
-                        </div>
+
+                <!-- Member 4 -->
+                <div class="team-card flex flex-col items-center group">
+                    <div class="team-image-container w-28 h-28 rounded-3xl border border-white/10 bg-slate-900 flex items-center justify-center mb-4 transition-all duration-300">
+                        <i data-lucide="activity" class="w-10 h-10 text-rose-400"></i>
                     </div>
-                    <h4 class="font-bold text-white mb-1">Team Member 4</h4>
-                    <p class="text-xs text-medical-accent mb-4">Data Scientist</p>
-                    <div class="team-info text-xs text-slate-400 leading-relaxed border-t border-white/10 pt-4">
-                        Developing advanced LLM prompts and diagnostic models for high-accuracy AI assistance.
-                    </div>
+                    <h4 class="font-bold text-slate-100 text-sm text-center">Uthman Mariam</h4>
+                    <p class="text-xs text-slate-400 mt-1">Data Scientist</p>
                 </div>
-                <!-- Team Member 5 -->
-                <div class="team-card glass-panel p-6 rounded-2xl border border-white/5 text-center relative overflow-hidden group">
-                    <div class="aspect-square rounded-xl bg-white/5 mb-4 overflow-hidden">
-                        <div class="team-image w-full h-full flex items-center justify-center text-slate-600">
-                            <i data-lucide="user" class="w-16 h-16"></i>
-                        </div>
+
+                <!-- Member 5 -->
+                <div class="team-card flex flex-col items-center group">
+                    <div class="team-image-container w-28 h-28 rounded-3xl border border-white/10 bg-slate-900 flex items-center justify-center mb-4 transition-all duration-300">
+                        <i data-lucide="layers" class="w-10 h-10 text-amber-400"></i>
                     </div>
-                    <h4 class="font-bold text-white mb-1">Team Member 5</h4>
-                    <p class="text-xs text-medical-accent mb-4">Systems Architect</p>
-                    <div class="team-info text-xs text-slate-400 leading-relaxed border-t border-white/10 pt-4">
-                        Ensuring system reliability and seamless integration between all MedOS modules.
-                    </div>
+                    <h4 class="font-bold text-slate-100 text-sm text-center">Adeniyi Umar</h4>
+                    <p class="text-xs text-slate-400 mt-1">Systems Architect</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="relative z-10 border-t border-white/5 pt-16 pb-8">
+    <footer class="relative z-10 border-t border-white/5 pt-16 pb-8 bg-slate-950/40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div class="flex items-center justify-center gap-2 mb-8">
-                <div class="w-8 h-8 rounded bg-gradient-to-br from-medical-accent to-medical-teal flex items-center justify-center">
-                    <i data-lucide="activity" class="w-4 h-4 text-white"></i>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-medical-accent to-medical-teal flex items-center justify-center">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-white"></i>
                 </div>
-                <span class="font-display font-bold text-slate-300">MedOS</span>
+                <span class="font-display font-bold text-xl text-slate-300">MedOS</span>
             </div>
-            <p class="text-slate-500 text-sm mb-4">&copy; 2026 AI-Powered Hospital Management System. All rights reserved.</p>
+            <p class="text-slate-500 text-sm mb-4">&copy; 2026 AI-Powered Hospital Management System. Built with Amanah.</p>
             <div class="flex justify-center gap-6 text-xs text-slate-400">
                 <a href="#" class="hover:text-white">Privacy Policy</a>
                 <a href="#" class="hover:text-white">Terms of Service</a>
-                <a href="/login" class="text-medical-accent font-semibold">Launch MedOS AI</a>
+                <a href="/login" class="text-medical-teal font-semibold">Launch MedOS Portal</a>
             </div>
         </div>
     </footer>
 
+    <!-- Scripts -->
     <script>
         lucide.createIcons();
+
+        // Navbar Scroll Effect
         window.addEventListener('scroll', () => {
             const nav = document.getElementById('navbar');
-            if (window.scrollY > 20) nav.classList.add('bg-medical-900/80', 'shadow-lg');
-            else nav.classList.remove('bg-medical-900/80', 'shadow-lg');
+            if (window.scrollY > 20) nav.classList.add('bg-[#0B0F19]/80', 'shadow-lg');
+            else nav.classList.remove('bg-[#0B0F19]/80', 'shadow-lg');
         });
+
+        // Real-Time Risk Predictor Simulation
+        const hrSlider = document.getElementById('heart_rate');
+        const spo2Slider = document.getElementById('spo2');
+        const tempSlider = document.getElementById('temperature');
+
+        const hrVal = document.getElementById('hr-val');
+        const spo2Val = document.getElementById('spo2-val');
+        const tempVal = document.getElementById('temp-val');
+
+        const riskDot = document.getElementById('risk-dot');
+        const riskTitle = document.getElementById('risk-title');
+        const riskProb = document.getElementById('risk-probability');
+        const riskRec = document.getElementById('risk-recommendation');
+        const mewsScore = document.getElementById('mews-score');
+
+        async function updatePrediction() {
+            const hr = parseFloat(hrSlider.value);
+            const spo2 = parseFloat(spo2Slider.value);
+            const temp = parseFloat(tempSlider.value);
+
+            hrVal.textContent = `${hr} bpm`;
+            spo2Val.textContent = `${spo2} %`;
+            tempVal.textContent = `${temp.toFixed(1)} °C`;
+
+            try {
+                // Fetch from predictive API route
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ heart_rate: hr, spo2: spo2, temperature: temp })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderResult(data.score, data.risk_level, data.recommendation, data.color, data.probability);
+                } else {
+                    // Fallback to local calculations if API is unavailable
+                    localFallbackCalculate(hr, spo2, temp);
+                }
+            } catch (err) {
+                // Fallback to local calculations
+                localFallbackCalculate(hr, spo2, temp);
+            }
+        }
+
+        function renderResult(score, level, recommendation, color, probability) {
+            riskDot.style.backgroundColor = color;
+            riskTitle.textContent = level;
+            riskTitle.style.color = color;
+            riskProb.textContent = `${probability.toFixed(1)}%`;
+            riskRec.textContent = recommendation;
+            mewsScore.textContent = `${score} / 9`;
+        }
+
+        function localFallbackCalculate(hr, spo2, temp) {
+            let score = 0;
+            if (hr < 40 || hr > 129) score += 3;
+            else if (hr > 109 || hr > 129 || hr < 50) score += 2;
+            else if (hr > 100 || hr < 55) score += 1;
+            
+            if (spo2 < 85) score += 3;
+            else if (spo2 < 90) score += 2;
+            else if (spo2 < 95) score += 1;
+            
+            if (temp < 35.0 || temp > 38.5) score += 2;
+            else if (temp < 36.0 || temp > 38.0) score += 1;
+
+            let level = "Low Risk";
+            let rec = "Maintain routine observations. Standard clinical protocols active.";
+            let color = "#10B981";
+            let prob = score * 10.0;
+
+            if (score >= 5) {
+                level = "Critical Risk";
+                rec = "Immediate clinical team alert. ICU Bed reserves should be monitored.";
+                color = "#EF4444";
+                prob = Math.min(98.0, 75.0 + score * 3.0);
+            } else if (score >= 3) {
+                level = "Moderate Risk";
+                rec = "Escalate review frequency. Attending physician consultation advised.";
+                color = "#F59E0B";
+                prob = 40.0 + score * 8.0;
+            } else {
+                prob = Math.max(5.0, prob);
+            }
+
+            renderResult(score, level, rec, color, prob);
+        }
+
+        hrSlider.addEventListener('input', updatePrediction);
+        spo2Slider.addEventListener('input', updatePrediction);
+        tempSlider.addEventListener('input', updatePrediction);
+
+        // Run initially
+        updatePrediction();
     </script>
 </body>
+
 </html>

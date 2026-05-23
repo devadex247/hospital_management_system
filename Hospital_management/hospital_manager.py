@@ -1,4 +1,8 @@
-from database import DepartmentDAL, DoctorDAL, PatientDAL, AppointmentDAL, MedicalRecordDAL
+from database import (
+    DepartmentDAL, DoctorDAL, PatientDAL, AppointmentDAL, MedicalRecordDAL,
+    AdmissionDAL, InventoryDAL, PrescriptionDAL, StaffScheduleDAL,
+    BillingDAL, LabOrderDAL, RadiologyDAL, AuditLogDAL, ChatSessionDAL
+)
 
 class Hospital:
     def __init__(self, name):
@@ -9,8 +13,15 @@ class Hospital:
         self.patient_dal = PatientDAL()
         self.appointment_dal = AppointmentDAL()
         self.medical_record_dal = MedicalRecordDAL()
-        from database import ChatSessionDAL
         self.chat_dal = ChatSessionDAL()
+        self.admission_dal = AdmissionDAL()
+        self.inventory_dal = InventoryDAL()
+        self.prescription_dal = PrescriptionDAL()
+        self.staff_dal = StaffScheduleDAL()
+        self.billing_dal = BillingDAL()
+        self.lab_dal = LabOrderDAL()
+        self.radiology_dal = RadiologyDAL()
+        self.audit_dal = AuditLogDAL()
 
     def add_department(self, name, description=None):
         """Add a department to the database"""
@@ -184,8 +195,104 @@ class Hospital:
         except Exception as e:
             return False, f"Error resetting database: {str(e)}"
 
+    # --- Admissions ---
+    def add_admission(self, patient_id, room_number, bed_number):
+        return self.admission_dal.create_admission(patient_id, room_number, bed_number)
+
+    def discharge_patient(self, admission_id):
+        return self.admission_dal.discharge_patient(admission_id)
+
+    def get_active_admissions(self):
+        return self.admission_dal.get_active_admissions()
+
+    def get_all_admissions(self):
+        return self.admission_dal.get_all_admissions()
+
+    # --- Inventory ---
+    def add_inventory_item(self, item_name, quantity, unit, min_threshold=10):
+        return self.inventory_dal.create_inventory_item(item_name, quantity, unit, min_threshold)
+
+    def update_inventory_stock(self, item_name, quantity_change):
+        return self.inventory_dal.update_stock(item_name, quantity_change)
+
+    def get_all_inventory(self):
+        return self.inventory_dal.get_all_inventory()
+
+    def get_low_stock_items(self):
+        return self.inventory_dal.get_low_stock_items()
+
+    # --- Prescriptions ---
+    def add_prescription(self, patient_id, doctor_id, medicine_name, dosage, frequency, duration):
+        return self.prescription_dal.create_prescription(patient_id, doctor_id, medicine_name, dosage, frequency, duration)
+
+    def get_patient_prescriptions(self, patient_id):
+        return self.prescription_dal.get_prescriptions_by_patient(patient_id)
+
+    def update_prescription_status(self, prescription_id, status):
+        return self.prescription_dal.update_prescription_status(prescription_id, status)
+
+    # --- Staff Schedules ---
+    def add_staff_schedule(self, staff_name, role, department_id, shift_start, shift_end, performance_rating=5.0):
+        return self.staff_dal.create_schedule(staff_name, role, department_id, shift_start, shift_end, performance_rating)
+
+    def get_all_staff_schedules(self):
+        return self.staff_dal.get_all_schedules()
+
+    # --- Billing ---
+    def add_bill(self, patient_id, appointment_id, amount, status='Unpaid'):
+        return self.billing_dal.create_bill(patient_id, appointment_id, amount, status)
+
+    def pay_bill(self, bill_id):
+        return self.billing_dal.pay_bill(bill_id)
+
+    def get_patient_bills(self, patient_id):
+        return self.billing_dal.get_bills_by_patient(patient_id)
+
+    def get_all_bills(self):
+        return self.billing_dal.get_all_bills()
+
+    # --- Claims ---
+    def add_insurance_claim(self, bill_id, provider_name, policy_number, claimed_amount):
+        return self.billing_dal.create_insurance_claim(bill_id, provider_name, policy_number, claimed_amount)
+
+    def update_claim_status(self, claim_id, status):
+        return self.billing_dal.update_claim_status(claim_id, status)
+
+    def get_all_claims(self):
+        return self.billing_dal.get_all_claims()
+
+    # --- Lab Orders ---
+    def add_lab_order(self, patient_id, doctor_id, test_name, loinc_code):
+        return self.lab_dal.create_lab_order(patient_id, doctor_id, test_name, loinc_code)
+
+    def complete_lab_order(self, lab_order_id, result):
+        return self.lab_dal.complete_lab_order(lab_order_id, result)
+
+    def get_patient_lab_orders(self, patient_id):
+        return self.lab_dal.get_patient_lab_orders(patient_id)
+
+    def get_all_lab_orders(self):
+        return self.lab_dal.get_all_lab_orders()
+
+    # --- Radiology ---
+    def add_radiology_image(self, patient_id, doctor_id, image_type, body_part, file_path, ai_prediction=None, doctor_notes=None):
+        return self.radiology_dal.create_radiology_image(patient_id, doctor_id, image_type, body_part, file_path, ai_prediction, doctor_notes)
+
+    def get_patient_radiology(self, patient_id):
+        return self.radiology_dal.get_radiology_by_patient(patient_id)
+
+    def get_all_radiology(self):
+        return self.radiology_dal.get_all_radiology()
+
+    # --- Audit Logs ---
+    def log_audit(self, username, action, table_name, record_id=None, details=None):
+        return self.audit_dal.log_action(username, action, table_name, record_id, details)
+
+    def get_all_audit_logs(self):
+        return self.audit_dal.get_all_logs()
+
 def get_initial_hospital():
-    """Initialize hospital with comprehensive departments"""
+    """Initialize hospital with comprehensive departments and seed data"""
     hospital = Hospital("General Hospital")
     
     # Create comprehensive hospital departments if they don't exist
@@ -251,5 +358,32 @@ def get_initial_hospital():
     for name, p_id in nigerian_patients:
         if p_id.lower() not in existing_patients:
             hospital.add_patient(name, p_id)
-    
+            
+    # --- Seed Inventory Items ---
+    default_inventory = [
+        ("Paracetamol 500mg", 150, "tablets", 20),
+        ("Amoxicillin 250mg", 80, "tablets", 15),
+        ("Insulin Glargine 100 U/mL", 8, "vials", 5),
+        ("Atorvastatin 20mg", 200, "tablets", 30),
+        ("Metformin 500mg", 300, "tablets", 40)
+    ]
+    existing_inventory = [item['item_name'].lower() for item in hospital.get_all_inventory()]
+    for name, qty, unit, threshold in default_inventory:
+        if name.lower() not in existing_inventory:
+            hospital.add_inventory_item(name, qty, unit, threshold)
+            
+    # --- Seed Staff Schedules ---
+    default_staff = [
+        ("Nurse Ngozi", "Nurse", "Emergency Medicine", "2026-05-20 08:00:00", "2026-05-20 16:00:00"),
+        ("Nurse Adebayo", "Nurse", "Pediatrics", "2026-05-20 16:00:00", "2026-05-21 00:00:00"),
+        ("Tech Ibrahim", "Technician", "Radiology", "2026-05-20 09:00:00", "2026-05-20 17:00:00")
+    ]
+    existing_schedules = hospital.get_all_staff_schedules()
+    if not existing_schedules:
+        # Find department IDs for seeding
+        depts = {d['name'].lower(): d['id'] for d in hospital.get_departments()}
+        for name, role, dept_name, start, end in default_staff:
+            dept_id = depts.get(dept_name.lower())
+            hospital.add_staff_schedule(name, role, dept_id, start, end)
+            
     return hospital

@@ -8,6 +8,11 @@ from views.doctors import render_doctors
 from views.patients import render_patients
 from views.appointments import render_appointments
 from views.assistant import render_assistant
+from views.pharmacy import render_pharmacy
+from views.laboratory import render_laboratory
+from views.radiology import render_radiology
+from views.finance import render_finance
+from views.staff import render_staff
 from dotenv import load_dotenv
 import yaml
 import os, sys
@@ -148,13 +153,13 @@ try:
         
         # --- RBAC Menu Filtering ---
         if role == 'admin':
-            menu = ["📊 Dashboard", "👨‍⚕️ Doctors", "🩺 Patients", "📅 Appointments", "🤖 AI Assistant"]
+            menu = ["📊 Dashboard", "👨‍⚕️ Doctors", "🩺 Patients", "📅 Appointments", "💊 Pharmacy", "🔬 Laboratory", "🩻 Radiology", "💸 Finance", "👥 Staff", "🤖 AI Assistant"]
         elif role == 'doctor':
-            menu = ["📊 Dashboard", "👨‍⚕️ Doctors", "🩺 Patients", "📅 Appointments", "🤖 AI Assistant"]
+            menu = ["📊 Dashboard", "👨‍⚕️ Doctors", "🩺 Patients", "📅 Appointments", "💊 Pharmacy", "🔬 Laboratory", "🩻 Radiology", "🤖 AI Assistant"]
         elif role == 'staff':
-            menu = ["📊 Dashboard", "🩺 Patients", "📅 Appointments"]
+            menu = ["📊 Dashboard", "🩺 Patients", "📅 Appointments", "💊 Pharmacy", "🔬 Laboratory", "🩻 Radiology", "👥 Staff"]
         elif role == 'patient':
-            menu = ["📅 Appointments", "🤖 AI Assistant"]
+            menu = ["📅 Appointments", "💸 Finance", "💊 Pharmacy", "🤖 AI Assistant"]
         else:
             menu = ["🤖 AI Assistant"]
 
@@ -184,6 +189,16 @@ try:
             render_patients(hospital)
         elif choice == "📅 Appointments":
             render_appointments(hospital)
+        elif choice == "💊 Pharmacy":
+            render_pharmacy(hospital)
+        elif choice == "🔬 Laboratory":
+            render_laboratory(hospital)
+        elif choice == "🩻 Radiology":
+            render_radiology(hospital)
+        elif choice == "💸 Finance":
+            render_finance(hospital)
+        elif choice == "👥 Staff":
+            render_staff(hospital)
         elif choice == "🤖 AI Assistant":
             render_assistant(hospital)
 

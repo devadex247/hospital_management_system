@@ -578,3 +578,428 @@ class ChatSessionDAL:
 def hash_password(password):
     """Hash a password using SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
+
+
+class AdmissionDAL:
+    """Data Access Layer for Admissions"""
+    
+    @staticmethod
+    def create_admission(patient_id, room_number, bed_number):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO admissions (patient_id, room_number, bed_number, status)
+                VALUES (?, ?, ?, 'Admitted')
+                """,
+                (patient_id, room_number, bed_number)
+            )
+            conn.commit()
+            return cursor.lastrowid
+            
+    @staticmethod
+    def discharge_patient(admission_id):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE admissions 
+                SET discharge_date = CURRENT_TIMESTAMP, status = 'Discharged'
+                WHERE id = ?
+                """,
+                (admission_id,)
+            )
+            conn.commit()
+            return True
+
+    @staticmethod
+    def get_active_admissions():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT a.*, p.name as patient_name, p.personal_id as patient_personal_id
+                FROM admissions a
+                JOIN patients p ON a.patient_id = p.id
+                WHERE a.status = 'Admitted'
+                ORDER BY a.admission_date DESC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def get_all_admissions():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT a.*, p.name as patient_name, p.personal_id as patient_personal_id
+                FROM admissions a
+                JOIN patients p ON a.patient_id = p.id
+                ORDER BY a.admission_date DESC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+
+class InventoryDAL:
+    """Data Access Layer for Pharmacy Inventory"""
+    
+    @staticmethod
+    def create_inventory_item(item_name, quantity, unit, min_threshold=10):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO inventories (item_name, quantity, unit, min_threshold)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(item_name) DO UPDATE SET
+                    quantity = quantity + excluded.quantity,
+                    last_restocked = CURRENT_TIMESTAMP
+                """,
+                (item_name, quantity, unit, min_threshold)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    @staticmethod
+    def update_stock(item_name, quantity_change):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            # Verify item exists and check stock level
+            cursor.execute("SELECT quantity FROM inventories WHERE item_name = ?", (item_name,))
+            row = cursor.fetchone()
+            if not row:
+                return False, "Item not found in inventory."
+            
+            new_qty = row['quantity'] + quantity_change
+            if new_qty < 0:
+                return False, f"Insufficient stock. Available: {row['quantity']}"
+            
+            cursor.execute(
+                "UPDATE inventories SET quantity = ?, last_restocked = CURRENT_TIMESTAMP WHERE item_name = ?",
+                (new_qty, item_name)
+            )
+            conn.commit()
+            return True, "Stock updated successfully."
+
+    @staticmethod
+    def get_all_inventory():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM inventories ORDER BY item_name ASC")
+            return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def get_low_stock_items():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM inventories WHERE quantity <= min_threshold ORDER BY quantity ASC")
+            return [dict(row) for row in cursor.fetchall()]
+
+
+class PrescriptionDAL:
+    """Data Access Layer for Prescriptions"""
+    
+    @staticmethod
+    def create_prescription(patient_id, doctor_id, medicine_name, dosage, frequency, duration):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO prescriptions (patient_id, doctor_id, medicine_name, dosage, frequency, duration)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (patient_id, doctor_id, medicine_name, dosage, frequency, duration)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    @staticmethod
+    def get_prescriptions_by_patient(patient_id):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT pr.*, d.name as doctor_name
+                FROM prescriptions pr
+                JOIN doctors d ON pr.doctor_id = d.id
+                WHERE pr.patient_id = ?
+                ORDER BY pr.created_at DESC
+                """,
+                (patient_id,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def update_prescription_status(prescription_id, status):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE prescriptions SET status = ? WHERE id = ?", (status, prescription_id))
+            conn.commit()
+            return True
+
+
+class StaffScheduleDAL:
+    """Data Access Layer for Staff & Roster Management"""
+    
+    @staticmethod
+    def create_schedule(staff_name, role, department_id, shift_start, shift_end, performance_rating=5.0):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO staff_schedules (staff_name, role, department_id, shift_start, shift_end, performance_rating)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (staff_name, role, department_id, shift_start, shift_end, performance_rating)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    @staticmethod
+    def get_all_schedules():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT s.*, dept.name as department_name
+                FROM staff_schedules s
+                LEFT JOIN departments dept ON s.department_id = dept.id
+                ORDER BY s.shift_start DESC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+
+class BillingDAL:
+    """Data Access Layer for Financial Billing & Claims"""
+    
+    @staticmethod
+    def create_bill(patient_id, appointment_id, amount, status='Unpaid'):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO bills (patient_id, appointment_id, amount, status)
+                VALUES (?, ?, ?, ?)
+                """,
+                (patient_id, appointment_id, amount, status)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    @staticmethod
+    def pay_bill(bill_id):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE bills SET status = 'Paid' WHERE id = ?", (bill_id,))
+            conn.commit()
+            return True
+
+    @staticmethod
+    def get_bills_by_patient(patient_id):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT b.*, a.date as appointment_date, d.name as doctor_name
+                FROM bills b
+                LEFT JOIN appointments a ON b.appointment_id = a.id
+                LEFT JOIN doctors d ON a.doctor_id = d.id
+                WHERE b.patient_id = ?
+                ORDER BY b.billing_date DESC
+                """,
+                (patient_id,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def get_all_bills():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT b.*, p.name as patient_name, p.personal_id as patient_personal_id
+                FROM bills b
+                JOIN patients p ON b.patient_id = p.id
+                ORDER BY b.billing_date DESC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def create_insurance_claim(bill_id, provider_name, policy_number, claimed_amount):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO insurance_claims (bill_id, provider_name, policy_number, claimed_amount, status)
+                VALUES (?, ?, ?, ?, 'Submitted')
+                """,
+                (bill_id, provider_name, policy_number, claimed_amount)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    @staticmethod
+    def update_claim_status(claim_id, status):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE insurance_claims SET status = ? WHERE id = ?", (status, claim_id))
+            conn.commit()
+            return True
+
+    @staticmethod
+    def get_all_claims():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT c.*, b.amount as bill_amount, p.name as patient_name
+                FROM insurance_claims c
+                JOIN bills b ON c.bill_id = b.id
+                JOIN patients p ON b.patient_id = p.id
+                ORDER BY c.submitted_at DESC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+
+class LabOrderDAL:
+    """Data Access Layer for Laboratory Orders (LOINC mapping)"""
+    
+    @staticmethod
+    def create_lab_order(patient_id, doctor_id, test_name, loinc_code):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO lab_orders (patient_id, doctor_id, test_name, loinc_code, status)
+                VALUES (?, ?, ?, ?, 'Pending')
+                """,
+                (patient_id, doctor_id, test_name, loinc_code)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    @staticmethod
+    def complete_lab_order(lab_order_id, result):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE lab_orders SET result = ?, status = 'Completed' WHERE id = ?",
+                (result, lab_order_id)
+            )
+            conn.commit()
+            return True
+
+    @staticmethod
+    def get_lab_orders_by_patient(patient_id):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT l.*, d.name as doctor_name
+                FROM lab_orders l
+                JOIN doctors d ON l.doctor_id = d.id
+                WHERE l.patient_id = ?
+                ORDER BY l.created_at DESC
+                """,
+                (patient_id,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def get_all_lab_orders():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT l.*, p.name as patient_name, d.name as doctor_name
+                FROM lab_orders l
+                JOIN patients p ON l.patient_id = p.id
+                JOIN doctors d ON l.doctor_id = d.id
+                ORDER BY l.created_at DESC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+
+class RadiologyDAL:
+    """Data Access Layer for Radiology Images (PACS metadata)"""
+    
+    @staticmethod
+    def create_radiology_image(patient_id, doctor_id, image_type, body_part, file_path, ai_prediction=None, doctor_notes=None):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO radiology_images (patient_id, doctor_id, image_type, body_part, file_path, ai_prediction, doctor_notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (patient_id, doctor_id, image_type, body_part, file_path, ai_prediction, doctor_notes)
+            )
+            conn.commit()
+            return cursor.lastrowid
+
+    @staticmethod
+    def get_radiology_by_patient(patient_id):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT r.*, d.name as doctor_name
+                FROM radiology_images r
+                JOIN doctors d ON r.doctor_id = d.id
+                WHERE r.patient_id = ?
+                ORDER BY r.created_at DESC
+                """,
+                (patient_id,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def get_all_radiology():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT r.*, p.name as patient_name, d.name as doctor_name
+                FROM radiology_images r
+                JOIN patients p ON r.patient_id = p.id
+                JOIN doctors d ON r.doctor_id = d.id
+                ORDER BY r.created_at DESC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+
+class AuditLogDAL:
+    """Data Access Layer for HIPAA/GDPR Audit Trails"""
+    
+    @staticmethod
+    def log_action(username, action, table_name, record_id=None, details=None):
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    INSERT INTO audit_logs (username, action, table_name, record_id, details)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (username, action, table_name, record_id, details)
+                )
+                conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"Audit log writing failed: {e}")
+            return None
+
+    @staticmethod
+    def get_all_logs():
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 500")
+            return [dict(row) for row in cursor.fetchall()]
+

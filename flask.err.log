@@ -1,0 +1,76 @@
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+127.0.0.1 - - [20/May/2026 22:51:43] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:53:56] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:55:05] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:55:11] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:57:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:57:04] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:58:20] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:58:22] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:58:24] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 22:59:00] "GET /app?role=doctor&username=doctor&password=doctor123 HTTP/1.1" 200 -
+ * Detected change in 'C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\zoneinfo\\_zoneinfo.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+127.0.0.1 - - [20/May/2026 23:05:03] "POST /api/chat HTTP/1.1" 200 -
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\Hospital_management\\app.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+127.0.0.1 - - [20/May/2026 23:23:06] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 23:23:07] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [20/May/2026 23:23:07] "GET /favicon.ico HTTP/1.1" 404 -
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\Hospital_management\\database\\__init__.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+ * Detected change in 'C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python314\\Doc\\html\\_downloads\\6dc1f3f4f0e6ca13cb42ddf4d6cbc8af\\tzinfo_examples.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+ * Detected change in 'C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\llama_index\\core\\indices\\base.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+ * Detected change in 'C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\scipy\\optimize\\tests\\test_differentiable_functions.py', reloading
+ * Detected change in 'C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\scipy\\optimize\\tests\\test_direct.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\api\\index.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\monte.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\mosel.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\ncl.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\nimrod.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\nit.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\nix.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\numbair.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\oberon.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\objective.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\ooc.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\openscad.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\other.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\parasail.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\parsers.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\pascal.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\pawn.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\pddl.py', reloading
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\venv\\Lib\\site-packages\\pygments\\lexers\\perl.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+127.0.0.1 - - [21/May/2026 07:57:25] "POST /api/predict HTTP/1.1" 200 -
+ * Detected change in 'C:\\Users\\user\\Desktop\\Hospital_Management_System\\Hospital_management\\app.py', reloading
+ * Restarting with watchdog (windowsapi)
+ * Debugger is active!
+ * Debugger PIN: 115-494-854
+127.0.0.1 - - [21/May/2026 08:18:18] "POST /api/predict HTTP/1.1" 200 -

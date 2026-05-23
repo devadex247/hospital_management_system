@@ -54,6 +54,72 @@ try:
             resp.headers.add("Access-Control-Allow-Origin", "*")
             return resp, 500
 
+    @app.route("/api/predict", methods=["POST", "OPTIONS"])
+    def predict_api():
+        if request.method == "OPTIONS":
+            response = jsonify({})
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+            response.headers.add("Access-Control-Allow-Methods", "POST")
+            return response, 200
+            
+        data = request.json or {}
+        try:
+            heart_rate = float(data.get("heart_rate", 72))
+            spo2 = float(data.get("spo2", 98))
+            temperature = float(data.get("temperature", 37.0))
+            
+            # Simple MEWS calculation logic
+            score = 0
+            if heart_rate < 40 or heart_rate > 129:
+                score += 3
+            elif heart_rate > 109 or heart_rate < 50:
+                score += 2
+            elif heart_rate > 100 or heart_rate < 55:
+                score += 1
+                
+            if spo2 < 85:
+                score += 3
+            elif spo2 < 90:
+                score += 2
+            elif spo2 < 95:
+                score += 1
+                
+            if temperature < 35.0 or temperature > 38.5:
+                score += 2
+            elif temperature < 36.0 or temperature > 38.0:
+                score += 1
+                
+            if score >= 5:
+                risk_level = "Critical Risk"
+                recommendation = "Immediate clinical team alert. ICU Bed reserves should be monitored."
+                color = "#EF4444"
+                probability = min(98.0, 75.0 + score * 3.0)
+            elif score >= 3:
+                risk_level = "Moderate Risk"
+                recommendation = "Escalate review frequency. Attending physician consultation advised."
+                color = "#F59E0B"
+                probability = 40.0 + score * 8.0
+            else:
+                risk_level = "Low Risk"
+                recommendation = "Maintain routine observations. Standard clinical protocols active."
+                color = "#10B981"
+                probability = max(5.0, score * 10.0)
+                
+            resp = jsonify({
+                "score": score,
+                "risk_level": risk_level,
+                "recommendation": recommendation,
+                "color": color,
+                "probability": probability
+            })
+            resp.headers.add("Access-Control-Allow-Origin", "*")
+            return resp
+        except Exception as e:
+            resp = jsonify({"error": str(e)})
+            resp.headers.add("Access-Control-Allow-Origin", "*")
+            return resp, 500
+
     # Base directory for the hospital management app
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Hospital_management"))
 
