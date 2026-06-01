@@ -3,19 +3,28 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import ScrollToTop from '@/components/ScrollToTop'
 import { Activity, Key, User, Mail, Phone, Lock, Eye, EyeOff, ClipboardList, Stethoscope, Loader2, CheckCircle2 } from 'lucide-react'
 
+type JoinRole = 'doctor' | 'staff' | 'patient'
+
+type JoinHospitalResponse = {
+  error?: string
+  hospital?: string
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'An unexpected database error occurred.'
+}
+
 export default function JoinHospital() {
   const router = useRouter()
-  const supabase = createClient()
 
   // Form Fields
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'doctor' | 'staff' | 'patient'>('patient')
+  const [role, setRole] = useState<JoinRole>('patient')
   const [accessToken, setAccessToken] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [specialization, setSpecialization] = useState('')
@@ -44,87 +53,29 @@ export default function JoinHospital() {
     }
 
     try {
-      const cleanToken = accessToken.trim().toUpperCase()
-
-      // 1. Verify Access Token
-      const { data: tokenData, error: tokenError } = await supabase
-        .from('hospital_access_tokens')
-        .select('*, hospitals(*)')
-        .eq('access_token', cleanToken)
-        .eq('is_active', true)
-        .single()
-
-      if (tokenError || !tokenData) {
-        throw new Error('Hospital access token is invalid, rotated, or inactive.')
-      }
-
-      const hospitalId = tokenData.hospital_id
-      const hospitalName = tokenData.hospitals?.name || 'Hospital Workspace'
-
-      // 2. Sign up user via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            role: role,
-            username: email.split('@')[0].toLowerCase() + '_' + Math.floor(Math.random() * 1000),
-            full_name: fullName,
-          }
-        }
+      const response = await fetch('/api/auth/join-hospital', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          role,
+          accessToken,
+          phoneNumber,
+          specialization,
+        }),
       })
 
-      if (authError || !authData.user) {
-        throw new Error(authError?.message || 'Failed to register account credentials.')
-      }
+      const result = (await response.json()) as JoinHospitalResponse
 
-      const userId = authData.user.id
-
-      // 3. Create Membership connection
-      const { error: membershipError } = await supabase
-        .from('hospital_memberships')
-        .insert({
-          hospital_id: hospitalId,
-          user_id: userId,
-          role: role,
-          status: 'active'
-        })
-
-      if (membershipError) {
-        throw new Error('Failed to attach your account to the hospital database.')
-      }
-
-      // 4. Create Minimal Clinical Profile
-      if (role === 'doctor') {
-        const { error: doctorError } = await supabase
-          .from('doctors')
-          .insert({
-            user_id: userId,
-            name: fullName,
-            specialization: specialization || 'General Practice',
-            email: email,
-            phone: phoneNumber || null
-          })
-
-        if (doctorError) throw new Error('Auth completed but Doctor profile setup failed.')
-      } else if (role === 'patient') {
-        const personalId = 'PAT-' + (Math.floor(Math.random() * 900000) + 100000)
-        const { error: patientError } = await supabase
-          .from('patients')
-          .insert({
-            user_id: userId,
-            name: fullName,
-            personal_id: personalId,
-            email: email,
-            phone: phoneNumber || null
-          })
-
-        if (patientError) throw new Error('Auth completed but Patient profile setup failed.')
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to join hospital workspace.')
       }
 
       setSuccess(true)
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An unexpected database error occurred.')
+    } catch (err: unknown) {
+      setErrorMsg(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -266,7 +217,7 @@ export default function JoinHospital() {
                   <ClipboardList className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <select
                     value={role}
-                    onChange={(e) => setRole(e.target.value as any)}
+                    onChange={(e) => setRole(e.target.value as JoinRole)}
                     className="w-full pl-10 pr-4 py-3 rounded-xl text-sm appearance-none bg-slate-900/80 cursor-pointer"
                   >
                     <option value="patient">Patient</option>

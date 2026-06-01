@@ -3,13 +3,21 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import ScrollToTop from '@/components/ScrollToTop'
-import { Activity, ShieldCheck, Key, User, Building2, MapPin, Mail, Phone, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Activity, ShieldCheck, User, Building2, MapPin, Mail, Phone, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
+
+type RegisterAdminResponse = {
+  error?: string
+  token?: string
+  hospital?: string
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'An unexpected database error occurred.'
+}
 
 export default function AdminSignup() {
   const router = useRouter()
-  const supabase = createClient()
 
   // Form Fields
   const [fullName, setFullName] = useState('')
@@ -44,92 +52,33 @@ export default function AdminSignup() {
     }
 
     try {
-      // 1. Sign up user via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            role: 'owner_admin',
-            username: email.split('@')[0].toLowerCase() + '_' + Math.floor(Math.random() * 1000),
-            full_name: fullName,
-          }
-        }
+      const response = await fetch('/api/auth/register-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          hospitalName,
+          hospitalAddress,
+          hospitalEmail,
+          hospitalPhone,
+        }),
       })
 
-      if (authError || !authData.user) {
-        throw new Error(authError?.message || 'Failed to create user credentials.')
+      const result = (await response.json()) as RegisterAdminResponse
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to register hospital workspace.')
       }
 
-      const userId = authData.user.id
-
-      // 2. Create Hospital
-      const { data: hospitalData, error: hospitalError } = await supabase
-        .from('hospitals')
-        .insert({
-          name: hospitalName,
-          address: hospitalAddress || null,
-          contact_email: hospitalEmail,
-          contact_phone: hospitalPhone,
-          owner_user_id: userId,
-          is_active: true
-        })
-        .select()
-        .single()
-
-      if (hospitalError || !hospitalData) {
-        throw new Error(hospitalError?.message || 'Failed to initialize hospital workspace.')
+      if (!result.token || !result.hospital) {
+        throw new Error('Hospital workspace was created, but the server response was incomplete.')
       }
 
-      const hospitalId = hospitalData.id
-
-      // 3. Create Hospital Membership
-      const { error: membershipError } = await supabase
-        .from('hospital_memberships')
-        .insert({
-          hospital_id: hospitalId,
-          user_id: userId,
-          role: 'owner_admin',
-          status: 'active'
-        })
-
-      if (membershipError) {
-        throw new Error(membershipError.message || 'Failed to create membership connection.')
-      }
-
-      // 4. Generate hospital invite / workspace access token
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-      let inviteToken = ''
-      for (let i = 0; i < 8; i++) {
-        inviteToken += chars.charAt(Math.floor(Math.random() * chars.length))
-      }
-
-      const { error: tokenError } = await supabase
-        .from('hospital_access_tokens')
-        .insert({
-          hospital_id: hospitalId,
-          access_token: inviteToken,
-          created_by_user_id: userId,
-          is_active: true
-        })
-
-      if (tokenError) {
-        throw new Error(tokenError.message || 'Failed to register invite access token.')
-      }
-
-      // 5. Automatically create a profile doctor record if needed
-      // (This matches Flask where minimal profiles are created)
-      await supabase.from('doctors').insert({
-        user_id: userId,
-        name: fullName,
-        specialization: 'General Practice',
-        email: email,
-        phone: hospitalPhone
-      })
-
-      setSuccessData({ token: inviteToken, hospital: hospitalName })
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An unexpected database error occurred.')
+      setSuccessData({ token: result.token, hospital: result.hospital })
+    } catch (err: unknown) {
+      setErrorMsg(getErrorMessage(err))
     } finally {
       setLoading(false)
     }

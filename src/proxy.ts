@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
-  const { supabaseResponse, user } = await updateSession(request)
+  const { supabaseResponse, user, role } = await updateSession(request)
 
   const path = request.nextUrl.pathname
 
@@ -16,8 +16,6 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    const role = user.user_metadata?.role || 'patient'
-    
     // 2. Perform RBAC routing checks
     if (role === 'patient') {
       // Patients are restricted to: appointments, finance (bills), pharmacy (prescriptions)
@@ -55,7 +53,6 @@ export async function proxy(request: NextRequest) {
   // 3. Prevent logged-in users from hitting login or signup landing pages
   if ((path === '/login' || path.startsWith('/signup')) && user) {
     const url = request.nextUrl.clone()
-    const role = user.user_metadata?.role || 'patient'
     url.pathname = role === 'patient' ? '/dashboard/appointments' : '/dashboard'
     return NextResponse.redirect(url)
   }

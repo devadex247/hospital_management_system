@@ -1,10 +1,16 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Activity, Mail, Lock, Key, ClipboardList, Eye, EyeOff, Loader2, LogIn, ShieldAlert } from 'lucide-react'
+
+type LoginRole = 'owner_admin' | 'doctor' | 'staff' | 'patient'
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'An unexpected database error occurred.'
+}
 
 function LoginForm() {
   const router = useRouter()
@@ -15,7 +21,7 @@ function LoginForm() {
   // Form Fields
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'owner_admin' | 'doctor' | 'staff' | 'patient'>('patient')
+  const [role, setRole] = useState<LoginRole>('patient')
   const [accessToken, setAccessToken] = useState('')
 
   // State controls
@@ -23,14 +29,11 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [infoMsg, setInfoMsg] = useState('')
-
-  useEffect(() => {
-    // Check if redirect has inactivity reason
-    const reason = searchParams.get('reason')
-    if (reason === 'inactivity') {
-      setInfoMsg('You have been logged out due to 15 minutes of inactivity.')
-    }
-  }, [searchParams])
+  const inactivityInfoMsg =
+    searchParams.get('reason') === 'inactivity'
+      ? 'You have been logged out due to 15 minutes of inactivity.'
+      : ''
+  const displayInfoMsg = infoMsg || inactivityInfoMsg
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,7 +65,13 @@ function LoginForm() {
       }
 
       const user = authData.user
-      const userRole = user.user_metadata?.role || 'patient'
+      const { data: profileData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      const userRole = profileData?.role || user.user_metadata?.role || 'patient'
 
       // 2. Validate Role Scoping Matches
       // Allow general matching for admins consistent with Flask
@@ -113,8 +122,8 @@ function LoginForm() {
         router.push(role === 'patient' ? '/dashboard/appointments' : '/dashboard')
       }
       router.refresh()
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An unexpected database error occurred.')
+    } catch (err: unknown) {
+      setErrorMsg(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -147,9 +156,9 @@ function LoginForm() {
           </div>
         )}
 
-        {infoMsg && (
+        {displayInfoMsg && (
           <div className="p-3.5 rounded-xl bg-med-teal/10 border border-med-teal/20 text-med-teal text-xs font-semibold leading-relaxed">
-            {infoMsg}
+            {displayInfoMsg}
           </div>
         )}
 
@@ -161,7 +170,7 @@ function LoginForm() {
               <ClipboardList className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as any)}
+                onChange={(e) => setRole(e.target.value as LoginRole)}
                 className="w-full pl-10 pr-4 py-3 rounded-xl text-sm appearance-none bg-slate-900/80 cursor-pointer"
               >
                 <option value="patient">Patient Portal</option>
