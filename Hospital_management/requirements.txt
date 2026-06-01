@@ -1,7 +1,0 @@
-streamlit
-litellm
-python-dotenv
-flask
-gunicorn
-requests
-streamlit-authenticator

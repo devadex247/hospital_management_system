@@ -1,18 +1,4 @@
 {
   "version": 2,
-  "functions": {
-    "api/*.py": {
-      "includeFiles": "Hospital_management/**"
-    }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "api/index.py"
-    }
-  ]
+  "framework": "nextjs"
 }

@@ -1,131 +1,271 @@
-# Hospital Management System (AI-Powered)
+# MedOS AI — Hospital Management System
 
-An advanced, AI-powered Hospital Management System built with Python, Streamlit, and Flask, designed for deployment on Vercel. The application features a serverless backend and a fully browser-native frontend via `stlite`, making it highly accessible, lightweight, and easy to deploy.
+> **Next-generation, serverless AI co-pilot for clinical workflows, triage prediction, and hospital operations.**
 
-## 🏗 Architecture Overview
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL_16-3ecf8e?logo=supabase)](https://supabase.com)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?logo=tailwindcss)](https://tailwindcss.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-The system is split into two primary paradigms: an API-driven Flask backend and a responsive Streamlit frontend powered by WebAssembly (`stlite`). 
+---
 
-### 1. Frontend: Streamlit & stlite (WebAssembly)
-Located in `Hospital_management/`, the frontend provides a comprehensive UI for hospital administration:
-- **Streamlit**: Used to build interactive and data-rich user interfaces.
-- **stlite Integration**: The Streamlit app is mounted directly into the browser using `@stlite/mountable`. This allows the Python frontend code to run entirely client-side using WebAssembly (Pyodide), drastically reducing server overhead and enabling a seamless, App-like experience.
-- **Views & Routing**: Modular UI components are separated into `views/` (Dashboard, Doctors, Patients, Appointments, AI Assistant).
-- **Authentication**: Secure login and session management powered by `streamlit-authenticator` (configured via `config.yaml`).
+## Table of Contents
 
-### 2. Backend: Flask (Serverless API)
-Located in `api/index.py`, the backend serves two critical roles:
-- **Frontend Serving**: Dynamically loads the Python source files from the `Hospital_management/` directory, injects them into an HTML template, and serves the `stlite` WebAssembly environment.
-- **AI Chat Endpoint**: Exposes a `/api/chat` route to facilitate AI assistance. It acts as a proxy, safely calling a Hugging Face router model (`Qwen/Qwen2.5-72B-Instruct:novita` via an OpenAI-compatible client) without exposing API keys to the client-side WebAssembly environment.
+1. [Overview](#overview)
+2. [Architecture](#architecture)
+3. [Features](#features)
+4. [Tech Stack](#tech-stack)
+5. [Getting Started](#getting-started)
+6. [Environment Variables](#environment-variables)
+7. [Database Setup (Supabase)](#database-setup-supabase)
+8. [Authentication & Security](#authentication--security)
+9. [Role Permissions](#role-permissions)
+10. [Project Structure](#project-structure)
+11. [Deployment](#deployment)
 
-### 3. Database: SQLite & Data Access Layer (DAL)
-- **Data Persistence**: Uses a local `SQLite` database (`hospital_management.db`).
-- **DAL Pattern**: Database operations are abstracted into specific Data Access Layers (`DepartmentDAL`, `DoctorDAL`, `PatientDAL`, `AppointmentDAL`, `MedicalRecordDAL`) located in `database/dal.py`.
-- **Hospital Manager API**: The `hospital_manager.py` file acts as the primary service layer, orchestrating the DAL operations to provide high-level methods (e.g., `schedule_appointment`, `add_patient`).
+---
 
-## 🛠 Tech Stack & Tools
+## Overview
 
-- **Core Frameworks**: [Streamlit](https://streamlit.io/) (Frontend), [Flask](https://flask.palletsprojects.com/) (Backend / API).
-- **WebAssembly Runtime**: [stlite](https://github.com/whitphx/stlite) (Serverless Streamlit via Pyodide).
-- **AI Integration**: [Hugging Face Router](https://huggingface.co/) (Model hosting), [Qwen 2.5](https://qwenlm.github.io/) (LLM), [LiteLLM](https://docs.litellm.ai/) / OpenAI client.
-- **Database**: SQLite3, raw SQL with Python `sqlite3`.
-- **Authentication**: `streamlit-authenticator`, `yaml` configuration.
-- **Environment Management**: `python-dotenv`.
-- **Deployment**: [Vercel](https://vercel.com/) Serverless Functions (`vercel.json`).
+MedOS AI is a **serverless-first, AI-augmented Hospital Management System** built on the modern web stack. It replaces the legacy Flask/SQLite backend with a fully scalable Next.js 15 + Supabase architecture that:
 
-## 📂 Project Structure
+- Runs at **zero cost** at validation/prototype scale (Supabase free tier + Vercel hobby)
+- Has a **clear upgrade path** to production (Supabase Pro + Vercel Pro)
+- Enforces **RBAC** (Role-Based Access Control) at the middleware layer
+- Includes an **AI Triage Engine** using the MEWS (Modified Early Warning Score) algorithm
+- Automatically logs every write operation to an **immutable audit trail**
 
-```text
-Hospital_Management_System/
-├── api/
-│   └── index.py                 # Flask serverless API & stlite HTML renderer
-├── Hospital_management/
-│   ├── app.py                   # Main Streamlit application entry point
-│   ├── hospital_manager.py      # Core service layer / DAL orchestrator
-│   ├── models.py                # Data models / dataclasses
-│   ├── config.yaml              # Streamlit authenticator configurations
-│   ├── requirements.txt         # Python dependencies
-│   ├── database/                # SQLite DB and DAL classes
-│   │   ├── dal.py               # Data Access Layer implementations
-│   │   ├── connection.py        # SQLite connection management
-│   │   ├── schema.sql           # Database schema definition
-│   │   └── hospital_management.db
-│   ├── views/                   # Streamlit UI pages (Dashboard, Patients, etc.)
-│   ├── services/                # Background services / utilities
-│   └── utils/                   # Helper functions and custom styles
-├── vercel.json                  # Vercel deployment configuration
-└── requirements.txt             # Project root dependencies
+---
+
+## Architecture
+
+```
+Browser (Next.js App Router)
+   │
+   ├── /  ─────────────── Landing Page (Static)
+   ├── /login ──────────── Auth Page (Supabase Auth)
+   ├── /signup/admin ────── Hospital Registration
+   ├── /signup/join ─────── Staff/Doctor Onboarding (Token-gated)
+   └── /dashboard/* ─────── Protected (RBAC via middleware)
+         │
+         └── Supabase (PostgreSQL 16 + Auth + RLS)
 ```
 
-## 🚀 Getting Started (Local Development)
+**Middleware (`src/proxy.ts`)** intercepts all `/dashboard/*` routes, validates the Supabase session, and redirects unauthorised requests to `/login`.
+
+---
+
+## Features
+
+| Module | Description |
+|--------|-------------|
+| 🏠 **Overview** | Live KPI cards (patients, appointments, low-stock, pending labs) + quick actions |
+| 🧠 **AI Triage** | MEWS-based risk stratification with colour-coded risk cards and save-to-record |
+| 👥 **Patients** | Full CRUD, search, slide-in detail drawer |
+| 📅 **Appointments** | Booking modal, status tracking (Scheduled / Completed / Cancelled / No-show) |
+| 💊 **Pharmacy** | Inventory management, low-stock alerting, upsert restocking |
+| 🧪 **Lab** | LOINC-coded lab orders, result tracking, status filter pills |
+| 🖥️ **Radiology** | PACS image logging with AI prediction and doctor notes, card grid view |
+| 💰 **Finance** | Revenue KPIs, collection rate, filterable bills table (NGN) |
+| 👔 **Staff** | Shift scheduling, performance star-ratings, role badges |
+| 🛡️ **Audit Logs** | Immutable compliance trail with full-text search and table/action-type filters |
+| ⚙️ **Settings** | Profile editing, password change, auto-logout status |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 15 (App Router) |
+| Styling | Tailwind CSS v4 + custom dark theme |
+| UI Icons | Lucide React |
+| Backend | Next.js API Routes (Node.js serverless) |
+| Database | Supabase (PostgreSQL 16) |
+| Auth | Supabase Auth + JWT |
+| Session | `@supabase/ssr` (cookie-based, 7-day refresh) |
+| Deployment | Vercel (Edge Network) |
+
+---
+
+## Getting Started
 
 ### Prerequisites
-- Python 3.9+
-- pip (Python package installer)
 
-### Setup Instructions
+- Node.js ≥ 18
+- npm ≥ 9
+- A free [Supabase](https://supabase.com) account
+- A free [Vercel](https://vercel.com) account (for deployment)
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd Hospital_Management_System
-   ```
+### 1. Clone the repository
 
-2. **Set up a Virtual Environment:**
-   ```bash
-   python -m venv venv
-   # Windows
-   venv\Scripts\activate
-   # macOS/Linux
-   source venv/bin/activate
-   ```
-
-3. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure Environment Variables:**
-   Create a `.env` file in the root directory (and inside `Hospital_management/`) and add your API keys:
-   ```env
-   HF_TOKEN=your_huggingface_router_token
-   ```
-
-### Running the Application
-
-You can run the application in two ways:
-
-**Method 1: Run via Flask (Production Simulation with stlite)**
-This mimics the Vercel deployment by serving the Streamlit app through the browser natively.
 ```bash
-python api/index.py
+git clone https://github.com/your-org/hospital-management-system.git
+cd hospital-management-system
 ```
-*Access the app at: http://127.0.0.1:5000*
 
-**Method 2: Run via Streamlit Native (Standard Development)**
-Run the Streamlit app conventionally (useful for quick UI debugging).
+### 2. Install dependencies
+
 ```bash
-cd Hospital_management
-streamlit run app.py
+npm install
 ```
-*Access the app at: http://localhost:8501*
 
-## ☁️ Deployment
+### 3. Configure environment variables
 
-This project is optimized for deployment on Vercel using Serverless Functions.
+Copy the example file and fill in your Supabase credentials:
 
-1. Install the Vercel CLI:
-   ```bash
-   npm i -g vercel
-   ```
-2. Link and deploy:
-   ```bash
-   vercel
-   ```
-   *Note: Ensure your `HF_TOKEN` and other required environment variables are added to your Vercel project settings.*
+```bash
+cp .env.local.example .env.local
+```
 
-The `vercel.json` file configures the routing, directing all traffic to the `api/index.py` serverless function.
+See [Environment Variables](#environment-variables) below.
 
-## 🔐 Security Features
-- **Stateless Authentication**: Session state handling securely backed by hashed YAML credentials.
-- **Proxy AI Requests**: The LLM API requests are routed through the Flask backend (`/api/chat`), preventing API keys from being exposed to the client's browser in the Pyodide/stlite environment.
+### 4. Set up the database
+
+Follow the [Database Setup](#database-setup-supabase) section.
+
+### 5. Start the development server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## Environment Variables
+
+Create a `.env.local` file in the project root:
+
+```env
+# ── Supabase ───────────────────────────────────────
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>  # Server-only, never expose to client
+
+# ── App ────────────────────────────────────────────
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# ── AI (optional) ──────────────────────────────────
+OPENAI_API_KEY=<your-openai-api-key>
+```
+
+> **Never commit `.env.local` to version control.** It is already in `.gitignore`.
+
+---
+
+## Database Setup (Supabase)
+
+1. Create a new project at [supabase.com](https://supabase.com)
+2. Navigate to **SQL Editor** in your project dashboard
+3. Paste the entire contents of [`supabase_schema.sql`](supabase_schema.sql) and run it
+4. The schema creates:
+   - 20 tables with Row Level Security (RLS) policies
+   - Performance indexes on all foreign keys and common query patterns
+   - An auto-profile trigger (`on_auth_user_created`) that creates a `public.users` row on signup
+5. Configure Auth settings in your Supabase dashboard:
+   - **JWT expiry**: 604800 seconds (7 days)
+   - **Refresh token rotation**: Enabled
+   - **Site URL**: Your production URL (or `http://localhost:3000` for local dev)
+
+---
+
+## Authentication & Security
+
+| Feature | Implementation |
+|---------|---------------|
+| Session management | `@supabase/ssr` — cookie-based, works with Next.js SSR/RSC |
+| 7-day sessions | Supabase refresh token rotation (configurable in dashboard) |
+| Auto-logout | `AutoLogoutHandler` component — 15 min inactivity → sign out |
+| RBAC middleware | `src/proxy.ts` — validates session on every `/dashboard/*` request |
+| Password reset | Supabase built-in email recovery flow |
+| RLS | Every table has row-level security policies scoped by role |
+
+### Auto-Logout Behaviour
+
+The `AutoLogoutHandler` component listens for `mousemove`, `keydown`, `click`, `scroll`, and `touchstart` events. If no activity is detected for **15 minutes**, it calls `supabase.auth.signOut()` and redirects to `/login`. A 60-second warning toast appears before sign-out.
+
+---
+
+## Role Permissions
+
+| Role | Access |
+|------|--------|
+| `owner_admin` | Full access to all modules |
+| `hospital_admin` | All modules except system-level owner settings |
+| `doctor` | Patients, Appointments, AI Triage, Lab, Radiology, Settings |
+| `staff` | Patients, Appointments, Pharmacy, Lab, Radiology, Settings |
+| `patient` | Overview, Settings (own data only) |
+
+Roles are enforced at two levels:
+1. **Middleware** (`src/proxy.ts`) — redirects on unauthenticated access
+2. **Supabase RLS** — prevents direct API calls from returning unauthorised data
+
+---
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── layout.tsx               # Root layout (fonts, dark mode)
+│   ├── globals.css              # Tailwind v4 clinical dark theme
+│   ├── page.tsx                 # Landing page
+│   ├── login/page.tsx           # Login page
+│   ├── signup/
+│   │   ├── admin/page.tsx       # Hospital admin registration
+│   │   └── join/page.tsx        # Staff/doctor onboarding (token-gated)
+│   └── dashboard/
+│       ├── layout.tsx           # Sidebar + topbar shell
+│       ├── page.tsx             # Overview / KPI dashboard
+│       ├── triage/page.tsx      # AI Triage engine (MEWS)
+│       ├── patients/page.tsx    # Patient management
+│       ├── appointments/page.tsx
+│       ├── pharmacy/page.tsx
+│       ├── lab/page.tsx
+│       ├── radiology/page.tsx
+│       ├── finance/page.tsx
+│       ├── staff/page.tsx
+│       ├── audit/page.tsx       # Immutable compliance logs
+│       └── settings/page.tsx
+├── components/
+│   ├── AutoLogoutHandler.tsx    # 15-min inactivity sign-out
+│   └── ScrollToTop.tsx          # Floating scroll-up button
+├── lib/
+│   └── supabase/
+│       ├── client.ts            # Browser-side Supabase client
+│       ├── server.ts            # Server-side Supabase client (RSC/API)
+│       └── middleware.ts        # Session refresh helper
+└── proxy.ts                     # Next.js middleware — RBAC enforcement
+```
+
+---
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Push your code to a GitHub repository
+2. Import the project at [vercel.com/new](https://vercel.com/new)
+3. Add all environment variables from `.env.local` in the Vercel project settings
+4. Vercel auto-detects Next.js and deploys to the Edge Network
+
+```bash
+# Or deploy from CLI
+npx vercel --prod
+```
+
+### Supabase (Production)
+
+For production workloads, upgrade your Supabase project to **Pro** to get:
+- Dedicated Postgres with no pausing
+- Point-in-time recovery (PITR)
+- Higher connection limits
+- Custom domains for Auth emails
+
+---
+
+## License
+
+MIT © 2025 MedOS AI Team
