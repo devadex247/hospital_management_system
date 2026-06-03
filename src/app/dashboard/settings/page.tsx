@@ -1,16 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getRoleLabel } from "@/lib/rbac";
-import { Settings, User, Lock, LogOut, Loader2, CheckCircle2 } from "lucide-react";
+import { Settings, User, Lock, LogOut, Loader2, CheckCircle2, Key, Copy, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+type InviteTokenInfo = {
+  token: string;
+  createdAt: string;
+  hospitalName: string;
+  signupUrl: string;
+};
+
 export default function SettingsPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [profile, setProfile] = useState<{ username: string; full_name: string; email: string; phone_number: string; role: string } | null>(null);
   const [form, setForm] = useState({ full_name: "", phone_number: "" });
+  const [inviteToken, setInviteToken] = useState<InviteTokenInfo | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [copiedToken, setCopiedToken] = useState(false);
+  const [appOrigin, setAppOrigin] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -26,10 +38,42 @@ export default function SettingsPage() {
       if (data) {
         setProfile(data);
         setForm({ full_name: data.full_name ?? "", phone_number: data.phone_number ?? "" });
+
+        if (data.role === "owner_admin" || data.role === "hospital_admin") {
+          setInviteLoading(true);
+          const response = await fetch("/api/hospital/invite-token");
+          const result = await response.json();
+
+          if (!response.ok) {
+            setInviteError(result.error || "Invite token could not be loaded.");
+          } else {
+            setInviteToken(result);
+          }
+
+          setInviteLoading(false);
+        }
       }
     };
     load();
-  }, []);
+    setAppOrigin(window.location.origin);
+  }, [supabase]);
+
+  const inviteUrl = inviteToken
+    ? `${appOrigin}${inviteToken.signupUrl}`
+    : "";
+  const inviteMessage = inviteToken
+    ? `Join ${inviteToken.hospitalName} on MedOS AI. Use hospital access token ${inviteToken.token} at ${inviteUrl}`
+    : "";
+  const whatsappHref = inviteMessage
+    ? `https://wa.me/?text=${encodeURIComponent(inviteMessage)}`
+    : "#";
+
+  const handleCopyToken = async () => {
+    if (!inviteToken) return;
+    await navigator.clipboard.writeText(inviteToken.token);
+    setCopiedToken(true);
+    window.setTimeout(() => setCopiedToken(false), 2500);
+  };
 
   const handleSaveProfile = async () => {
     setSaving(true); setSaved(false); setError("");
@@ -105,6 +149,65 @@ export default function SettingsPage() {
             {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
+
+        {profile && (profile.role === "owner_admin" || profile.role === "hospital_admin") && (
+          <div className="border-t border-white/5 pt-5">
+            <div className="rounded-xl border border-med-teal/20 bg-med-teal/5 p-4 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-med-teal/10 text-med-teal flex items-center justify-center flex-shrink-0">
+                  <Key size={17} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-100">Hospital Invite Token</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Share this token with doctors, patients, or staff so they can join your hospital workspace.
+                  </p>
+                </div>
+              </div>
+
+              {inviteLoading ? (
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                  <Loader2 size={16} className="animate-spin" /> Loading invite token...
+                </div>
+              ) : inviteError ? (
+                <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                  {inviteError}
+                </p>
+              ) : inviteToken ? (
+                <>
+                  <div className="rounded-lg bg-slate-950/60 border border-white/8 px-4 py-3">
+                    <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">Active token for {inviteToken.hospitalName}</p>
+                    <p className="mt-2 text-2xl font-black font-mono tracking-widest text-med-teal break-all">
+                      {inviteToken.token}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Created {new Date(inviteToken.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCopyToken}
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-med-teal hover:bg-sky-400 text-white transition-all"
+                    >
+                      {copiedToken ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                      {copiedToken ? "Copied" : "Copy Token"}
+                    </button>
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 transition-all"
+                    >
+                      <MessageCircle size={16} /> Share on WhatsApp
+                    </a>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Security */}
