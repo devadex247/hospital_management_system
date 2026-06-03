@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { recordActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import { UserCog, Plus, X, Loader2, AlertCircle, ChevronDown, Star } from "lucide-react";
 
@@ -71,6 +72,14 @@ export default function StaffPage() {
       performance_rating: parseFloat(form.performance_rating),
     }]);
     if (err) { setError(err.message); setSaving(false); return; }
+
+    await recordActivity({
+      action: `Scheduled ${form.staff_name} for a ${form.role} shift.`,
+      actionType: "create",
+      tableName: "staff_schedules",
+      details: `${form.shift_start} to ${form.shift_end}`,
+    });
+
     setSaving(false); setShowModal(false);
     setForm({ staff_name: "", role: "Nurse", department_id: "", shift_start: "", shift_end: "", performance_rating: "5" });
     load();

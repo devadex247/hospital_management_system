@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { fetchRecentActivity, formatActivityTime, type RecentActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import AutoLogoutHandler from "@/components/AutoLogoutHandler";
 import {
@@ -29,9 +30,12 @@ import {
   Menu,
   X,
   ChevronRight,
+  ChevronDown,
   BrainCircuit,
   Bell,
   Settings,
+  Clock,
+  UserCircle,
 } from "lucide-react";
 
 const NAV_ICONS: Record<DashboardRouteKey, React.ElementType> = {
@@ -47,6 +51,23 @@ const NAV_ICONS: Record<DashboardRouteKey, React.ElementType> = {
   audit: ShieldCheck,
   settings: Settings,
 };
+
+const ACTIVITY_HREFS: Record<string, string> = {
+  appointments: "/dashboard/appointments",
+  patients: "/dashboard/patients",
+  inventories: "/dashboard/pharmacy",
+  lab_orders: "/dashboard/lab",
+  radiology_images: "/dashboard/radiology",
+  staff_schedules: "/dashboard/staff",
+  patient_vitals: "/dashboard/triage",
+  users: "/dashboard/settings",
+  hospitals: "/dashboard/settings",
+  hospital_memberships: "/dashboard/staff",
+};
+
+function getActivityHref(tableName: string) {
+  return ACTIVITY_HREFS[tableName] ?? "/dashboard";
+}
 
 type Profile = {
   username: string;
@@ -65,6 +86,19 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [activity, setActivity] = useState<RecentActivity[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const loadRecentActivity = useCallback(async () => {
+    setActivityLoading(true);
+    const items = await fetchRecentActivity(5);
+    setActivity(items);
+    setActivityLoading(false);
+  }, []);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -91,10 +125,49 @@ export default function DashboardLayout({
         full_name: data.full_name ?? undefined,
         role: normalizeRole(data.role),
       });
+      void loadRecentActivity();
       setLoading(false);
     };
     loadProfile();
-  }, [router, supabase]);
+  }, [loadRecentActivity, router, supabase]);
+
+  useEffect(() => {
+    const handleActivityCreated = () => {
+      void loadRecentActivity();
+    };
+
+    window.addEventListener("medos:activity-created", handleActivityCreated);
+    return () => window.removeEventListener("medos:activity-created", handleActivityCreated);
+  }, [loadRecentActivity]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (notificationsRef.current && !notificationsRef.current.contains(target)) {
+        setNotificationsOpen(false);
+      }
+
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNotificationsOpen(false);
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -252,16 +325,137 @@ export default function DashboardLayout({
 
             <div className="ml-auto flex items-center gap-2">
               {/* notification bell */}
-              <button className="relative p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition-all duration-200">
-                <Bell size={18} />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-med-teal rounded-full" />
-              </button>
+              <div ref={notificationsRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsOpen((open) => !open);
+                    setUserMenuOpen(false);
+                    void loadRecentActivity();
+                  }}
+                  aria-label="Open notifications"
+                  aria-expanded={notificationsOpen}
+                  className="relative p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/5 transition-all duration-200"
+                >
+                  <Bell size={18} />
+                  {activity.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-med-teal text-[10px] leading-4 text-slate-950 font-bold text-center">
+                      {activity.length}
+                    </span>
+                  )}
+                </button>
+
+                {notificationsOpen && (
+                  <div className="absolute right-0 top-11 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/40 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
+                      <p className="text-sm font-semibold text-slate-100">Recent activity</p>
+                      <button
+                        type="button"
+                        onClick={() => void loadRecentActivity()}
+                        className="text-xs text-med-teal hover:text-sky-300 transition-colors"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto">
+                      {activityLoading ? (
+                        <div className="px-4 py-6 text-sm text-slate-500">Loading activity...</div>
+                      ) : activity.length === 0 ? (
+                        <div className="px-4 py-6 text-sm text-slate-500">No recent activity yet.</div>
+                      ) : (
+                        activity.map((item) => (
+                          <Link
+                            key={item.id}
+                            href={getActivityHref(item.table_name)}
+                            onClick={() => setNotificationsOpen(false)}
+                            className="block px-4 py-3 border-b border-white/5 hover:bg-white/[0.03] transition-colors"
+                          >
+                            <p className="text-sm text-slate-200 line-clamp-2">{item.action}</p>
+                            <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                              <Clock size={12} />
+                              {formatActivityTime(item.created_at)} · {item.table_name}
+                            </p>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+
+                    <Link
+                      href={role === "owner_admin" || role === "hospital_admin" ? "/dashboard/audit" : "/dashboard"}
+                      onClick={() => setNotificationsOpen(false)}
+                      className="block px-4 py-3 text-xs font-semibold text-med-teal hover:bg-white/[0.03] transition-colors"
+                    >
+                      {role === "owner_admin" || role === "hospital_admin" ? "View audit log" : "View dashboard"}
+                    </Link>
+                  </div>
+                )}
+              </div>
 
               {/* avatar */}
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-med-teal/40 to-med-accent/40 flex items-center justify-center text-xs font-bold text-white">
-                {profile?.full_name?.[0]?.toUpperCase() ??
-                  profile?.username?.[0]?.toUpperCase() ??
-                  "?"}
+              <div ref={userMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserMenuOpen((open) => !open);
+                    setNotificationsOpen(false);
+                  }}
+                  aria-label="Open user menu"
+                  aria-expanded={userMenuOpen}
+                  className="h-9 flex items-center gap-2 rounded-lg px-1.5 pr-2 text-slate-300 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  <span className="w-8 h-8 rounded-full bg-gradient-to-br from-med-teal/40 to-med-accent/40 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                    {profile?.full_name?.[0]?.toUpperCase() ??
+                      profile?.username?.[0]?.toUpperCase() ??
+                      "?"}
+                  </span>
+                  <span className="hidden sm:block max-w-32 truncate text-xs font-semibold">
+                    {profile?.full_name ?? profile?.username}
+                  </span>
+                  <ChevronDown size={14} className="hidden sm:block text-slate-500" />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-11 z-50 w-64 rounded-xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/40 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-white/8 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-med-teal/40 to-med-accent/40 flex items-center justify-center text-xs font-bold text-white">
+                        {profile?.full_name?.[0]?.toUpperCase() ??
+                          profile?.username?.[0]?.toUpperCase() ??
+                          "?"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-100 truncate">
+                          {profile?.full_name ?? profile?.username}
+                        </p>
+                        <p className={`text-xs truncate ${ROLE_COLORS[role] ?? "text-slate-400"}`}>
+                          {getRoleLabel(role)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-white/[0.03] transition-colors"
+                    >
+                      <UserCircle size={16} /> Profile settings
+                    </Link>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-white/[0.03] transition-colors"
+                    >
+                      <LayoutDashboard size={16} /> Dashboard overview
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <LogOut size={16} /> Sign out
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </header>

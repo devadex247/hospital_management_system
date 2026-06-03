@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { recordActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import {
   CalendarDays,
@@ -97,6 +98,17 @@ export default function AppointmentsPage() {
       notes: form.notes || null,
     }]);
     if (err) { setError(err.message); setSaving(false); return; }
+
+    const patient = patients.find((item) => String(item.id) === form.patient_id);
+    const doctor = doctors.find((item) => String(item.id) === form.doctor_id);
+    await recordActivity({
+      action: `Booked appointment for ${patient?.name ?? "patient"} with ${doctor?.name ?? "doctor"}.`,
+      actionType: "create",
+      tableName: "appointments",
+      patientId: Number(form.patient_id),
+      details: `${form.status}${form.notes ? ` - ${form.notes}` : ""}`,
+    });
+
     setSaving(false);
     setShowModal(false);
     load();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { recordActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import { FlaskConical, Plus, X, Loader2, AlertCircle, ChevronDown } from "lucide-react";
 
@@ -84,6 +85,16 @@ export default function LabPage() {
       result: form.result || null,
     }]);
     if (err) { setError(err.message); setSaving(false); return; }
+
+    const patient = patients.find((item) => String(item.id) === form.patient_id);
+    await recordActivity({
+      action: `Created lab order for ${patient?.name ?? "patient"}: ${form.test_name}.`,
+      actionType: "create",
+      tableName: "lab_orders",
+      patientId: Number(form.patient_id),
+      details: form.result || form.status,
+    });
+
     setSaving(false); setShowModal(false);
     setForm({ patient_id: "", doctor_id: "", test_name: "", loinc_code: "", status: "Pending", result: "" });
     load();

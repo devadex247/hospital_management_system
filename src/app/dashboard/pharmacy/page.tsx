@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { recordActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import { Pill, Plus, X, Loader2, AlertCircle, AlertTriangle, ChevronDown } from "lucide-react";
 
@@ -42,6 +43,14 @@ export default function PharmacyPage() {
       last_restocked: new Date().toISOString(),
     }], { onConflict: "item_name" });
     if (err) { setError(err.message); setSaving(false); return; }
+
+    await recordActivity({
+      action: `Updated inventory for ${form.item_name}.`,
+      actionType: "upsert",
+      tableName: "inventories",
+      details: `${form.quantity} ${form.unit}, threshold ${form.min_threshold}`,
+    });
+
     setSaving(false); setShowModal(false);
     setForm({ item_name: "", quantity: "", unit: "tablets", min_threshold: "10" });
     load();

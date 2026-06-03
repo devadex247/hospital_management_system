@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ScrollToTop from '@/components/ScrollToTop'
@@ -15,6 +15,25 @@ type JoinHospitalResponse = {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'An unexpected database error occurred.'
+}
+
+function cleanAccessToken(value: string) {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
+async function readJoinResponse(response: Response) {
+  const contentType = response.headers.get('content-type') ?? ''
+
+  if (contentType.includes('application/json')) {
+    return (await response.json()) as JoinHospitalResponse
+  }
+
+  const text = await response.text()
+  const message = response.status === 404 || text.trim().startsWith('<!DOCTYPE html')
+    ? 'Join signup endpoint was not found in the running app. The deployed build may still be updating.'
+    : 'Join signup endpoint did not return a readable response.'
+
+  return { error: message }
 }
 
 export default function JoinHospital() {
@@ -34,6 +53,14 @@ export default function JoinHospital() {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token')
+
+    if (token) {
+      setAccessToken(cleanAccessToken(token))
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,7 +94,7 @@ export default function JoinHospital() {
         }),
       })
 
-      const result = (await response.json()) as JoinHospitalResponse
+      const result = await readJoinResponse(response)
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to join hospital workspace.')
@@ -141,7 +168,7 @@ export default function JoinHospital() {
                   type="text"
                   required
                   value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value.toUpperCase())}
+                  onChange={(e) => setAccessToken(cleanAccessToken(e.target.value))}
                   placeholder="8-character code (e.g. ABCD1234)"
                   className="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-mono tracking-widest text-med-teal font-bold placeholder:font-sans placeholder:tracking-normal placeholder:font-normal"
                 />

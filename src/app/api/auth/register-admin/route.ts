@@ -73,7 +73,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const supabase = createAdminClient()
+  let supabase: ReturnType<typeof createAdminClient>
+
+  try {
+    supabase = createAdminClient()
+  } catch {
+    return NextResponse.json(
+      { error: 'Hospital registration is not configured on the server. Add the Supabase service role key to the deployment environment.' },
+      { status: 500 }
+    )
+  }
+
   const username = makeUsername(email)
   let userId: string | null = null
   let hospitalId: number | null = null
@@ -170,6 +180,15 @@ export async function POST(request: NextRequest) {
     if (doctorError) {
       throw new Error(doctorError.message || 'Failed to create administrator profile.')
     }
+
+    await supabase.from('audit_logs').insert({
+      username,
+      action: `${hospitalData.name} workspace was created by ${fullName}.`,
+      action_type: 'signup',
+      table_name: 'hospitals',
+      record_id: hospitalId,
+      details: `Owner admin ${email} created the initial invite token.`,
+    })
 
     return NextResponse.json({ token: inviteToken, hospital: hospitalData.name })
   } catch (error) {

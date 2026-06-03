@@ -16,6 +16,21 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'An unexpected database error occurred.'
 }
 
+async function readRegisterResponse(response: Response) {
+  const contentType = response.headers.get('content-type') ?? ''
+
+  if (contentType.includes('application/json')) {
+    return (await response.json()) as RegisterAdminResponse
+  }
+
+  const text = await response.text()
+  const message = response.status === 404 || text.trim().startsWith('<!DOCTYPE html')
+    ? 'Admin signup endpoint was not found in the running app. The deployed build may still be updating.'
+    : 'Admin signup endpoint did not return a readable response.'
+
+  return { error: message }
+}
+
 export default function AdminSignup() {
   const router = useRouter()
 
@@ -66,7 +81,7 @@ export default function AdminSignup() {
         }),
       })
 
-      const result = (await response.json()) as RegisterAdminResponse
+      const result = await readRegisterResponse(response)
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to register hospital workspace.')

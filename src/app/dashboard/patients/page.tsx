@@ -47,6 +47,21 @@ function age(dob: string | null): string {
   return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25)) + " yrs";
 }
 
+async function readPatientCreateResponse(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    return (await response.json()) as { patient?: Patient; error?: string };
+  }
+
+  const text = await response.text();
+  const message = response.status === 404 || text.trim().startsWith("<!DOCTYPE html")
+    ? "Patient creation endpoint was not found in the running app. The deployed build may still be updating."
+    : "Patient creation endpoint did not return a readable response.";
+
+  return { error: message };
+}
+
 export default function PatientsPage() {
   const supabase = createClient();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -81,8 +96,20 @@ export default function PatientsPage() {
     }
     setSaving(true);
     setError("");
-    const { error: err } = await supabase.from("patients").insert([form]);
-    if (err) { setError(err.message); setSaving(false); return; }
+    const response = await fetch("/api/patients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const result = await readPatientCreateResponse(response);
+
+    if (!response.ok || !result.patient) {
+      setError(result.error || "Patient record could not be created.");
+      setSaving(false);
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("medos:activity-created"));
     setSaving(false);
     setShowModal(false);
     setForm(EMPTY_FORM);

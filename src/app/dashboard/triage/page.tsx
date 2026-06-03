@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { recordActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import {
   BrainCircuit,
@@ -131,6 +132,14 @@ export default function TriagePage() {
       setError(saveError.message);
       return;
     }
+
+    await recordActivity({
+      action: `Saved ${result.risk_level} triage vitals for ${form.patientSearch || "patient"}.`,
+      actionType: "create",
+      tableName: "patient_vitals",
+      patientId: Number(form.patient_id),
+      details: `MEWS ${result.mews_score}, HR ${form.hr}, SpO2 ${form.spo2}, Temp ${form.temp}`,
+    });
 
     setSaved(true);
   };

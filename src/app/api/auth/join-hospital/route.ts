@@ -23,6 +23,10 @@ function cleanString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function cleanAccessToken(value: unknown) {
+  return cleanString(value).toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
 function makeUsername(email: string) {
   const base = email
     .split('@')[0]
@@ -58,7 +62,7 @@ export async function POST(request: NextRequest) {
   const fullName = cleanString(body.fullName)
   const email = cleanString(body.email).toLowerCase()
   const password = cleanString(body.password)
-  const accessToken = cleanString(body.accessToken).toUpperCase()
+  const accessToken = cleanAccessToken(body.accessToken)
   const phoneNumber = cleanString(body.phoneNumber)
   const specialization = cleanString(body.specialization)
 
@@ -81,7 +85,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const supabase = createAdminClient()
+  let supabase: ReturnType<typeof createAdminClient>
+
+  try {
+    supabase = createAdminClient()
+  } catch {
+    return NextResponse.json(
+      { error: 'Hospital signup is not configured on the server. Add the Supabase service role key to the deployment environment.' },
+      { status: 500 }
+    )
+  }
+
   const username = makeUsername(email)
   let userId: string | null = null
 
@@ -160,18 +174,42 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.role === 'patient') {
-      const { error: patientError } = await supabase.from('patients').insert({
-        user_id: userId,
-        name: fullName,
-        personal_id: makePersonalId(),
-        email,
-        phone: phoneNumber || null,
-      })
+      let patientErrorMessage = ''
 
-      if (patientError) {
-        throw new Error('Auth completed but Patient profile setup failed.')
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { error: patientError } = await supabase.from('patients').insert({
+          user_id: userId,
+          name: fullName,
+          personal_id: makePersonalId(),
+          email,
+          phone: phoneNumber || null,
+        })
+
+        if (!patientError) {
+          patientErrorMessage = ''
+          break
+        }
+
+        patientErrorMessage = patientError.message
+
+        if (patientError.code !== '23505') {
+          break
+        }
+      }
+
+      if (patientErrorMessage) {
+        throw new Error(`Auth completed but Patient profile setup failed: ${patientErrorMessage}`)
       }
     }
+
+    await supabase.from('audit_logs').insert({
+      username,
+      action: `${fullName} joined ${hospitalName} as ${body.role}.`,
+      action_type: 'signup',
+      table_name: 'hospital_memberships',
+      record_id: hospitalId,
+      details: `Invite token accepted for ${email}.`,
+    })
 
     return NextResponse.json({ hospital: hospitalName })
   } catch (error) {

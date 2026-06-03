@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { recordActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import { getRoleLabel } from "@/lib/rbac";
 import { Settings, User, Lock, LogOut, Loader2, CheckCircle2, Key, Copy, MessageCircle } from "lucide-react";
@@ -170,7 +171,7 @@ export default function SettingsPage() {
   }, [loadInviteTokenInfo, supabase]);
 
   const inviteUrl = inviteToken
-    ? `${appOrigin}${inviteToken.signupUrl}`
+    ? `${appOrigin}${inviteToken.signupUrl}?token=${encodeURIComponent(inviteToken.token)}`
     : "";
   const inviteMessage = inviteToken
     ? `Join ${inviteToken.hospitalName} on MedOS AI. Use hospital access token ${inviteToken.token} at ${inviteUrl}`
@@ -192,7 +193,15 @@ export default function SettingsPage() {
     if (!user) return;
     const { error: err } = await supabase.from("users").update({ full_name: form.full_name, phone_number: form.phone_number, updated_at: new Date().toISOString() }).eq("id", user.id);
     if (err) setError(err.message);
-    else setSaved(true);
+    else {
+      await recordActivity({
+        action: "Updated profile information.",
+        actionType: "update",
+        tableName: "users",
+        details: "Full name or phone number changed.",
+      });
+      setSaved(true);
+    }
     setSaving(false);
   };
 

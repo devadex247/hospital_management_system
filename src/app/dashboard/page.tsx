@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { fetchRecentActivity, formatActivityTime, type RecentActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import {
   getAllowedDashboardRoutes,
@@ -38,14 +39,6 @@ type KPI = {
   color: string;
   href: string;
   trend?: string;
-};
-
-type RecentActivity = {
-  id: number;
-  action: string;
-  username: string;
-  table_name: string;
-  created_at: string;
 };
 
 type Profile = {
@@ -130,14 +123,6 @@ function activityIcon(table: string) {
   return map[table] ?? <CheckCircle2 size={14} className="text-slate-400" />;
 }
 
-function timeAgo(iso: string) {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
-
 function buildRoleKpis(
   role: Role,
   counts: {
@@ -218,7 +203,7 @@ export default function DashboardOverview() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [profileRes, patientsRes, appointmentsRes, inventoryRes, labRes, vitalsRes, auditRes] =
+      const [profileRes, patientsRes, appointmentsRes, inventoryRes, labRes, vitalsRes, recentActivity] =
         await Promise.all([
           supabase.from("users").select("role, full_name, username").eq("id", user.id).single(),
           supabase.from("patients").select("id", { count: "exact", head: true }),
@@ -226,7 +211,7 @@ export default function DashboardOverview() {
           supabase.from("inventories").select("id", { count: "exact", head: true }).lt("quantity", 10),
           supabase.from("lab_orders").select("id", { count: "exact", head: true }).eq("status", "Pending"),
           supabase.from("patient_vitals").select("id", { count: "exact", head: true }).in("risk_level", ["High Risk", "Critical"]),
-          supabase.from("audit_logs").select("id, action, username, table_name, created_at").order("created_at", { ascending: false }).limit(8),
+          fetchRecentActivity(8),
         ]);
 
       const role = normalizeRole(profileRes.data?.role);
@@ -239,7 +224,7 @@ export default function DashboardOverview() {
         : null;
 
       setProfile(loadedProfile);
-      setActivity(auditRes.data ?? []);
+      setActivity(recentActivity);
 
       if (role === "patient") {
         const { data: patient } = await supabase
@@ -445,7 +430,7 @@ export default function DashboardOverview() {
                   </div>
                   <div className="flex items-center gap-1 text-xs text-slate-500 flex-shrink-0">
                     <Clock size={12} />
-                    {timeAgo(a.created_at)}
+                    {formatActivityTime(a.created_at)}
                   </div>
                 </li>
               ))}

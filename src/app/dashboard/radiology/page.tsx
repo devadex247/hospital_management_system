@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { recordActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import { Scan, Plus, X, Loader2, AlertCircle, ChevronDown } from "lucide-react";
 
@@ -62,6 +63,16 @@ export default function RadiologyPage() {
       doctor_notes: form.doctor_notes || null,
     }]);
     if (err) { setError(err.message); setSaving(false); return; }
+
+    const patient = patients.find((item) => String(item.id) === form.patient_id);
+    await recordActivity({
+      action: `Logged ${form.image_type} imaging study for ${patient?.name ?? "patient"}.`,
+      actionType: "create",
+      tableName: "radiology_images",
+      patientId: Number(form.patient_id),
+      details: `${form.body_part} - ${form.file_path}`,
+    });
+
     setSaving(false); setShowModal(false);
     setForm({ patient_id: "", doctor_id: "", image_type: "X-Ray", body_part: "Chest", file_path: "", ai_prediction: "", doctor_notes: "" });
     load();
