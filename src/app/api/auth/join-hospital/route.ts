@@ -50,6 +50,10 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'An unexpected database error occurred.'
 }
 
+export async function GET() {
+  return NextResponse.json({ ok: true, route: 'join-hospital' })
+}
+
 export async function POST(request: NextRequest) {
   let body: JoinHospitalBody
 

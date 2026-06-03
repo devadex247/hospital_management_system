@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { fetchRecentActivity, formatActivityTime, type RecentActivity } from "@/lib/activity";
+import { fetchRecentActivity, formatActivityTime, recordActivity, type RecentActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import {
   getAllowedDashboardRoutes,
@@ -23,11 +23,15 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  RefreshCw,
   Settings,
   Scan,
   DollarSign,
   UserCog,
   ShieldCheck,
+  Clipboard,
+  CreditCard,
+  HeartPulse,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -51,6 +55,67 @@ type PatientRecord = {
   id: number;
   name: string;
   personal_id: string;
+};
+
+type PatientAppointment = {
+  id: number;
+  date: string;
+  status: string;
+  notes: string | null;
+  doctors: { name: string; specialization: string } | null;
+};
+
+type PatientPrescription = {
+  id: number;
+  medicine_name: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  status: string;
+  doctors: { name: string } | null;
+  created_at: string;
+};
+
+type PatientBill = {
+  id: number;
+  amount: number;
+  status: string;
+  billing_date: string;
+};
+
+type PatientVital = {
+  id: number;
+  heart_rate: number;
+  spo2: number;
+  temperature: number;
+  mews_score: number;
+  risk_level: string;
+  recommendation: string;
+  created_at: string;
+};
+
+type PatientLabOrder = {
+  id: number;
+  test_name: string;
+  status: string;
+  result: string | null;
+  created_at: string;
+};
+
+type PatientPortalData = {
+  appointments: PatientAppointment[];
+  prescriptions: PatientPrescription[];
+  bills: PatientBill[];
+  vitals: PatientVital[];
+  labs: PatientLabOrder[];
+};
+
+const EMPTY_PATIENT_PORTAL_DATA: PatientPortalData = {
+  appointments: [],
+  prescriptions: [],
+  bills: [],
+  vitals: [],
+  labs: [],
 };
 
 const ACTION_ICONS: Record<DashboardRouteKey, React.ElementType> = {
@@ -197,11 +262,19 @@ export default function DashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [patientRecord, setPatientRecord] = useState<PatientRecord | null>(null);
+  const [patientPortalData, setPatientPortalData] = useState<PatientPortalData>(EMPTY_PATIENT_PORTAL_DATA);
+  const [patientActionLoading, setPatientActionLoading] = useState("");
+  const [patientActionMessage, setPatientActionMessage] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       const [profileRes, patientsRes, appointmentsRes, inventoryRes, labRes, vitalsRes, recentActivity] =
         await Promise.all([
@@ -236,6 +309,7 @@ export default function DashboardOverview() {
         setPatientRecord(patient ?? null);
 
         if (!patient) {
+          setPatientPortalData(EMPTY_PATIENT_PORTAL_DATA);
           setKpis([
             {
               label: "Care Profile",
@@ -255,13 +329,55 @@ export default function DashboardOverview() {
             },
           ]);
         } else {
-          const [patientAppointments, patientPrescriptions, patientBills, latestVitals] =
+          const [patientAppointments, patientPrescriptions, patientBills, latestVitals, patientLabs] =
             await Promise.all([
-              supabase.from("appointments").select("id", { count: "exact", head: true }).eq("patient_id", patient.id).eq("status", "Scheduled"),
-              supabase.from("prescriptions").select("id", { count: "exact", head: true }).eq("patient_id", patient.id).eq("status", "Active"),
-              supabase.from("bills").select("id", { count: "exact", head: true }).eq("patient_id", patient.id).neq("status", "Paid"),
-              supabase.from("patient_vitals").select("risk_level, mews_score").eq("patient_id", patient.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+              supabase
+                .from("appointments")
+                .select("id, date, status, notes, doctors(name, specialization)")
+                .eq("patient_id", patient.id)
+                .order("date", { ascending: true })
+                .limit(5),
+              supabase
+                .from("prescriptions")
+                .select("id, medicine_name, dosage, frequency, duration, status, created_at, doctors(name)")
+                .eq("patient_id", patient.id)
+                .order("created_at", { ascending: false })
+                .limit(5),
+              supabase
+                .from("bills")
+                .select("id, amount, status, billing_date")
+                .eq("patient_id", patient.id)
+                .order("billing_date", { ascending: false })
+                .limit(5),
+              supabase
+                .from("patient_vitals")
+                .select("id, heart_rate, spo2, temperature, mews_score, risk_level, recommendation, created_at")
+                .eq("patient_id", patient.id)
+                .order("created_at", { ascending: false })
+                .limit(5),
+              supabase
+                .from("lab_orders")
+                .select("id, test_name, status, result, created_at")
+                .eq("patient_id", patient.id)
+                .order("created_at", { ascending: false })
+                .limit(5),
             ]);
+
+          const appointments = (patientAppointments.data ?? []) as unknown as PatientAppointment[];
+          const prescriptions = (patientPrescriptions.data ?? []) as unknown as PatientPrescription[];
+          const bills = (patientBills.data ?? []) as PatientBill[];
+          const vitals = (latestVitals.data ?? []) as PatientVital[];
+          const labs = (patientLabs.data ?? []) as PatientLabOrder[];
+          const openBills = bills.filter((bill) => bill.status !== "Paid");
+          const latestVital = vitals[0];
+
+          setPatientPortalData({
+            appointments,
+            prescriptions,
+            bills,
+            vitals,
+            labs,
+          });
 
           setKpis([
             {
@@ -274,7 +390,7 @@ export default function DashboardOverview() {
             },
             {
               label: "Scheduled Visits",
-              value: patientAppointments.count ?? 0,
+              value: appointments.filter((appointment) => appointment.status === "Scheduled").length,
               sub: "Upcoming appointments",
               icon: CalendarDays,
               color: "text-med-teal",
@@ -282,7 +398,7 @@ export default function DashboardOverview() {
             },
             {
               label: "Active Prescriptions",
-              value: patientPrescriptions.count ?? 0,
+              value: prescriptions.filter((prescription) => prescription.status === "Active").length,
               sub: "Current medication records",
               icon: Pill,
               color: "text-amber-400",
@@ -290,10 +406,10 @@ export default function DashboardOverview() {
             },
             {
               label: "Latest Risk",
-              value: latestVitals.data?.risk_level ?? "No vitals",
-              sub: latestVitals.data ? `MEWS ${latestVitals.data.mews_score}` : `${patientBills.count ?? 0} open bill(s)`,
+              value: latestVital?.risk_level ?? "No vitals",
+              sub: latestVital ? `MEWS ${latestVital.mews_score}` : `${openBills.length} open bill(s)`,
               icon: Activity,
-              color: latestVitals.data?.risk_level === "Critical" ? "text-red-400" : "text-med-accent",
+              color: latestVital?.risk_level === "Critical" ? "text-red-400" : "text-med-accent",
               href: "/dashboard",
             },
           ]);
@@ -304,6 +420,7 @@ export default function DashboardOverview() {
       }
 
       setPatientRecord(null);
+      setPatientPortalData(EMPTY_PATIENT_PORTAL_DATA);
       setKpis(buildRoleKpis(role, {
         patients: patientsRes.count ?? 0,
         appointments: appointmentsRes.count ?? 0,
@@ -314,7 +431,7 @@ export default function DashboardOverview() {
       setLoading(false);
     };
     load();
-  }, [supabase]);
+  }, [reloadKey, supabase]);
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -324,6 +441,39 @@ export default function DashboardOverview() {
   };
 
   const role = profile?.role ?? "patient";
+  const refreshDashboard = async () => {
+    setPatientActionMessage("");
+    setReloadKey((key) => key + 1);
+  };
+
+  const copyPatientId = async () => {
+    if (!patientRecord) return;
+
+    await navigator.clipboard.writeText(patientRecord.personal_id);
+    setPatientActionMessage("Patient ID copied.");
+  };
+
+  const requestPatientFollowUp = async () => {
+    if (patientActionLoading) return;
+
+    setPatientActionLoading("follow-up");
+    setPatientActionMessage("");
+
+    const ok = await recordActivity({
+      action: patientRecord
+        ? `${patientRecord.name} requested a follow-up appointment.`
+        : "Patient requested hospital team support to link their care file.",
+      actionType: "request",
+      tableName: patientRecord ? "appointments" : "patients",
+      patientId: patientRecord?.id ?? null,
+      details: patientRecord ? `Patient ID ${patientRecord.personal_id}` : "Patient account has no linked patient record.",
+    });
+
+    setActivity(await fetchRecentActivity(8));
+    setPatientActionMessage(ok ? "Request sent to the hospital activity queue." : "Request could not be sent. Try again.");
+    setPatientActionLoading("");
+  };
+
   const quickActions = getAllowedDashboardRoutes(role)
     .filter((route) => route.key !== "overview")
     .slice(0, 4)
@@ -398,6 +548,231 @@ export default function DashboardOverview() {
           })}
         </div>
       </section>
+
+      {/* ── Patient Portal ─────────────────────────────────────────── */}
+      {role === "patient" && !loading && (
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+              Patient Portal
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {patientRecord && (
+                <button
+                  type="button"
+                  onClick={copyPatientId}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+                >
+                  <Clipboard size={14} /> Copy ID
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={requestPatientFollowUp}
+                disabled={patientActionLoading === "follow-up"}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-med-teal hover:bg-sky-400 text-white transition-all disabled:opacity-50"
+              >
+                {patientActionLoading === "follow-up" ? <Loader2 size={14} className="animate-spin" /> : <CalendarDays size={14} />}
+                Request Follow-up
+              </button>
+              <button
+                type="button"
+                onClick={refreshDashboard}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border border-white/10 text-slate-300 hover:bg-white/5 transition-all"
+              >
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </div>
+          </div>
+
+          {patientActionMessage && (
+            <p className="text-sm text-med-teal bg-med-teal/10 border border-med-teal/20 rounded-xl px-4 py-3">
+              {patientActionMessage}
+            </p>
+          )}
+
+          {!patientRecord ? (
+            <div className="glass-panel rounded-2xl p-5 flex flex-col gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <AlertCircle size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Care file not linked yet</p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Your account is active, but the hospital has not connected it to a patient record. Send a follow-up request or update your profile details.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={requestPatientFollowUp}
+                  disabled={patientActionLoading === "follow-up"}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-med-teal hover:bg-sky-400 text-white transition-all disabled:opacity-50"
+                >
+                  {patientActionLoading === "follow-up" ? <Loader2 size={14} className="animate-spin" /> : <CalendarDays size={14} />}
+                  Ask Hospital To Link File
+                </button>
+                <Link
+                  href="/dashboard/settings"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+                >
+                  <Settings size={14} /> Update Profile
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div className="glass-panel rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                  <CalendarDays size={16} className="text-med-teal" />
+                  <h3 className="text-sm font-semibold text-slate-100">Upcoming Visits</h3>
+                </div>
+                {patientPortalData.appointments.length === 0 ? (
+                  <p className="px-5 py-6 text-sm text-slate-500">No appointments are currently scheduled.</p>
+                ) : (
+                  <ul className="divide-y divide-white/5">
+                    {patientPortalData.appointments.map((appointment) => (
+                      <li key={appointment.id} className="px-5 py-3.5 flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-slate-100">{new Date(appointment.date).toLocaleString()}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {appointment.doctors?.name ?? "Doctor pending"} · {appointment.doctors?.specialization ?? "Care team"}
+                          </p>
+                          {appointment.notes && <p className="text-xs text-slate-400 mt-1">{appointment.notes}</p>}
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-med-teal/15 text-med-teal">
+                          {appointment.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="glass-panel rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                  <Pill size={16} className="text-amber-400" />
+                  <h3 className="text-sm font-semibold text-slate-100">Prescriptions</h3>
+                </div>
+                {patientPortalData.prescriptions.length === 0 ? (
+                  <p className="px-5 py-6 text-sm text-slate-500">No active prescriptions are on file.</p>
+                ) : (
+                  <ul className="divide-y divide-white/5">
+                    {patientPortalData.prescriptions.map((prescription) => (
+                      <li key={prescription.id} className="px-5 py-3.5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-slate-100">{prescription.medicine_name}</p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {prescription.dosage} · {prescription.frequency} · {prescription.duration}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">Doctor: {prescription.doctors?.name ?? "Care team"}</p>
+                          </div>
+                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400">
+                            {prescription.status}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="glass-panel rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                  <HeartPulse size={16} className="text-rose-400" />
+                  <h3 className="text-sm font-semibold text-slate-100">Latest Vitals</h3>
+                </div>
+                {patientPortalData.vitals.length === 0 ? (
+                  <p className="px-5 py-6 text-sm text-slate-500">No vitals have been recorded yet.</p>
+                ) : (
+                  <ul className="divide-y divide-white/5">
+                    {patientPortalData.vitals.map((vital) => (
+                      <li key={vital.id} className="px-5 py-3.5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-slate-100">{vital.risk_level} · MEWS {vital.mews_score}</p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              HR {vital.heart_rate} · SpO2 {vital.spo2}% · Temp {vital.temperature}C
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1 line-clamp-2">{vital.recommendation}</p>
+                          </div>
+                          <span className="text-xs text-slate-500 whitespace-nowrap">{formatActivityTime(vital.created_at)}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="glass-panel rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                  <FlaskConical size={16} className="text-med-accent" />
+                  <h3 className="text-sm font-semibold text-slate-100">Lab Results</h3>
+                </div>
+                {patientPortalData.labs.length === 0 ? (
+                  <p className="px-5 py-6 text-sm text-slate-500">No lab orders are available.</p>
+                ) : (
+                  <ul className="divide-y divide-white/5">
+                    {patientPortalData.labs.map((lab) => (
+                      <li key={lab.id} className="px-5 py-3.5 flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-slate-100">{lab.test_name}</p>
+                          <p className="text-xs text-slate-500 mt-1">{lab.result || "Result pending"}</p>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-med-accent/15 text-med-accent">
+                          {lab.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="glass-panel rounded-2xl overflow-hidden xl:col-span-2">
+                <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                  <CreditCard size={16} className="text-emerald-400" />
+                  <h3 className="text-sm font-semibold text-slate-100">Billing</h3>
+                </div>
+                {patientPortalData.bills.length === 0 ? (
+                  <p className="px-5 py-6 text-sm text-slate-500">No billing records are available.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/5">
+                          {["Date", "Amount", "Status"].map((heading) => (
+                            <th key={heading} className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              {heading}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {patientPortalData.bills.map((bill) => (
+                          <tr key={bill.id}>
+                            <td className="px-5 py-3.5 text-slate-400">{new Date(bill.billing_date).toLocaleDateString()}</td>
+                            <td className="px-5 py-3.5 text-slate-100 font-semibold tabular-nums">
+                              ${bill.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400">
+                                {bill.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ── Recent Activity ────────────────────────────────────────── */}
       <section>
