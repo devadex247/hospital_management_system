@@ -6,7 +6,6 @@ import {
   BrainCircuit,
   Activity,
   Loader2,
-  ChevronDown,
   AlertTriangle,
   ShieldCheck,
   ShieldAlert,
@@ -20,6 +19,12 @@ type TriageResult = {
   risk_level: string;
   probability: number;
   recommendation: string;
+  baseline_recommendation?: string;
+  observations?: string[];
+  ai?: {
+    generated: boolean;
+    model: string | null;
+  };
 };
 
 const RISK_CONFIG: Record<string, { color: string; bg: string; border: string; Icon: React.ElementType }> = {
@@ -48,29 +53,6 @@ const RISK_CONFIG: Record<string, { color: string; bg: string; border: string; I
     Icon: AlertTriangle,
   },
 };
-
-function getMEWSRisk(score: number): string {
-  if (score <= 2) return "Low Risk";
-  if (score <= 4) return "Moderate Risk";
-  if (score <= 6) return "High Risk";
-  return "Critical";
-}
-
-function calcMEWS(hr: number, spo2: number, temp: number): number {
-  let score = 0;
-  // Heart rate
-  if (hr < 40 || hr > 130) score += 3;
-  else if (hr < 50 || hr > 110) score += 2;
-  else if (hr < 60 || hr > 100) score += 1;
-  // SpO2
-  if (spo2 < 85) score += 3;
-  else if (spo2 < 90) score += 2;
-  else if (spo2 < 95) score += 1;
-  // Temperature
-  if (temp < 35 || temp > 40) score += 2;
-  else if (temp < 36 || temp > 38.5) score += 1;
-  return score;
-}
 
 export default function TriagePage() {
   const supabase = createClient();
@@ -101,27 +83,30 @@ export default function TriagePage() {
     setError("");
     setSaved(false);
 
-    // Local MEWS calculation (no external API call needed for demo)
-    const mews = calcMEWS(hr, spo2, temp);
-    const risk = getMEWSRisk(mews);
-    const probability = Math.min(0.95, mews / 12);
+    try {
+      const response = await fetch("/api/ai/triage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: Number(form.patient_id),
+          heartRate: hr,
+          spo2,
+          temperature: temp,
+        }),
+      });
 
-    const recs: Record<string, string> = {
-      "Low Risk": "Continue routine monitoring. Re-assess in 4 hours.",
-      "Moderate Risk": "Increase monitoring frequency to every 2 hours. Notify attending physician.",
-      "High Risk": "Immediate physician assessment required. Consider step-up care.",
-      "Critical": "EMERGENCY: Immediate senior physician review and potential ICU transfer.",
-    };
+      const payload = (await response.json()) as TriageResult & { error?: string };
 
-    const triage: TriageResult = {
-      mews_score: mews,
-      risk_level: risk,
-      probability,
-      recommendation: recs[risk],
-    };
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to run triage analysis.");
+      }
 
-    setResult(triage);
-    setLoading(false);
+      setResult(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to run triage analysis.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -129,7 +114,7 @@ export default function TriagePage() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: prof } = await supabase.from("users").select("username").eq("id", user?.id ?? "").single();
 
-    await supabase.from("patient_vitals").insert([{
+    const { error: saveError } = await supabase.from("patient_vitals").insert([{
       patient_id: Number(form.patient_id),
       doctor_username: prof?.username ?? "unknown",
       heart_rate: parseFloat(form.hr),
@@ -139,8 +124,14 @@ export default function TriagePage() {
       risk_level: result.risk_level,
       probability: result.probability,
       recommendation: result.recommendation,
-      source: "dashboard/triage",
+      source: result.ai?.generated ? `api/ai/triage:${result.ai.model}` : "api/ai/triage:local-mews",
     }]);
+
+    if (saveError) {
+      setError(saveError.message);
+      return;
+    }
+
     setSaved(true);
   };
 
@@ -172,8 +163,11 @@ export default function TriagePage() {
                 if (e.target.value.length >= 2) searchPatients(e.target.value);
                 else setPatients([]);
               }}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm bg-slate-900 border border-white/8 text-slate-200 outline-none focus:border-med-teal transition-colors"
+              className="w-full pl-9 pr-9 py-2.5 rounded-xl text-sm bg-slate-900 border border-white/8 text-slate-200 outline-none focus:border-med-teal transition-colors"
             />
+            {searching && (
+              <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 animate-spin" />
+            )}
             {patients.length > 0 && !form.patient_id && (
               <ul className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-white/10 rounded-xl overflow-hidden z-10 shadow-xl">
                 {patients.map((p) => (
@@ -280,7 +274,23 @@ export default function TriagePage() {
           <div className={`${cfg.bg} rounded-xl p-4`}>
             <p className="text-xs font-semibold text-slate-400 mb-1.5">Clinical Recommendation</p>
             <p className="text-sm text-slate-200">{result.recommendation}</p>
+            <p className="text-xs text-slate-500 mt-2">
+              {result.ai?.generated
+                ? `AI narrative generated with ${result.ai.model}.`
+                : "Local MEWS guidance used because API AI is not configured or unavailable."}
+            </p>
           </div>
+
+          {result.observations && result.observations.length > 0 && (
+            <div className="grid gap-2">
+              {result.observations.map((observation) => (
+                <div key={observation} className="flex items-start gap-2 text-xs text-slate-300">
+                  <Info size={14} className={`${cfg.color} mt-0.5 flex-shrink-0`} />
+                  <span>{observation}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex justify-end">
             {saved ? (

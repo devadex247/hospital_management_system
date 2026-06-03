@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { normalizeRole } from '@/lib/rbac'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -32,7 +33,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  let role = user?.user_metadata?.role || 'patient'
+  let role = normalizeRole(user?.user_metadata?.role)
 
   if (user) {
     const { data: profile } = await supabase
@@ -41,7 +42,7 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .maybeSingle()
 
-    role = profile?.role || role
+    role = normalizeRole(profile?.role, role)
   }
 
   return { supabaseResponse, user, role }

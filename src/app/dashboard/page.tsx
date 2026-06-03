@@ -1,21 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import {
+  getAllowedDashboardRoutes,
+  getRoleLabel,
+  normalizeRole,
+  type DashboardRouteKey,
+  type Role,
+} from "@/lib/rbac";
 import {
   Users,
   CalendarDays,
   Pill,
   FlaskConical,
   BrainCircuit,
-  TrendingUp,
   Activity,
   Clock,
   ArrowUpRight,
   AlertCircle,
   CheckCircle2,
   Loader2,
+  Settings,
+  Scan,
+  DollarSign,
+  UserCog,
+  ShieldCheck,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -35,6 +46,46 @@ type RecentActivity = {
   username: string;
   table_name: string;
   created_at: string;
+};
+
+type Profile = {
+  role: Role;
+  full_name?: string;
+  username: string;
+};
+
+type PatientRecord = {
+  id: number;
+  name: string;
+  personal_id: string;
+};
+
+const ACTION_ICONS: Record<DashboardRouteKey, React.ElementType> = {
+  overview: Activity,
+  triage: BrainCircuit,
+  patients: Users,
+  appointments: CalendarDays,
+  pharmacy: Pill,
+  lab: FlaskConical,
+  radiology: Scan,
+  finance: DollarSign,
+  staff: UserCog,
+  audit: ShieldCheck,
+  settings: Settings,
+};
+
+const ACTION_COLORS: Record<DashboardRouteKey, string> = {
+  overview: "from-slate-600 to-slate-800",
+  triage: "from-med-teal to-sky-600",
+  patients: "from-emerald-500 to-teal-600",
+  appointments: "from-cyan-500 to-blue-600",
+  pharmacy: "from-amber-500 to-orange-600",
+  lab: "from-med-accent to-violet-600",
+  radiology: "from-fuchsia-500 to-indigo-600",
+  finance: "from-green-500 to-emerald-700",
+  staff: "from-slate-500 to-slate-700",
+  audit: "from-rose-500 to-red-700",
+  settings: "from-slate-600 to-slate-800",
 };
 
 // ── Stat card component ────────────────────────────────────────────────────
@@ -87,70 +138,198 @@ function timeAgo(iso: string) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+function buildRoleKpis(
+  role: Role,
+  counts: {
+    patients: number;
+    appointments: number;
+    lowStock: number;
+    pendingLabs: number;
+    highRiskVitals: number;
+  }
+): KPI[] {
+  const clinicalRisk: KPI = {
+    label: "High-risk Vitals",
+    value: counts.highRiskVitals,
+    sub: "High or critical MEWS records",
+    icon: BrainCircuit,
+    color: "text-rose-400",
+    href: "/dashboard/triage",
+  };
+
+  const patients: KPI = {
+    label: "Total Patients",
+    value: counts.patients,
+    sub: "Registered in MedOS",
+    icon: Users,
+    color: "text-emerald-400",
+    href: "/dashboard/patients",
+  };
+
+  const appointments: KPI = {
+    label: "Scheduled Appointments",
+    value: counts.appointments,
+    sub: "Active bookings today",
+    icon: CalendarDays,
+    color: "text-med-teal",
+    href: "/dashboard/appointments",
+  };
+
+  const lowStock: KPI = {
+    label: "Low Stock Drugs",
+    value: counts.lowStock,
+    sub: "Items below threshold",
+    icon: Pill,
+    color: "text-amber-400",
+    href: "/dashboard/pharmacy",
+  };
+
+  const pendingLabs: KPI = {
+    label: "Pending Lab Tests",
+    value: counts.pendingLabs,
+    sub: "Awaiting results",
+    icon: FlaskConical,
+    color: "text-med-accent",
+    href: "/dashboard/lab",
+  };
+
+  if (role === "doctor") {
+    return [patients, appointments, clinicalRisk, pendingLabs];
+  }
+
+  if (role === "staff") {
+    return [patients, appointments, lowStock, pendingLabs];
+  }
+
+  return [patients, appointments, lowStock, pendingLabs];
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────
 export default function DashboardOverview() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [activity, setActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<{ role: string; full_name?: string; username: string } | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [patientRecord, setPatientRecord] = useState<PatientRecord | null>(null);
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [profileRes, patientsRes, appointmentsRes, inventoryRes, labRes, auditRes] =
+      const [profileRes, patientsRes, appointmentsRes, inventoryRes, labRes, vitalsRes, auditRes] =
         await Promise.all([
           supabase.from("users").select("role, full_name, username").eq("id", user.id).single(),
           supabase.from("patients").select("id", { count: "exact", head: true }),
           supabase.from("appointments").select("id", { count: "exact", head: true }).eq("status", "Scheduled"),
           supabase.from("inventories").select("id", { count: "exact", head: true }).lt("quantity", 10),
           supabase.from("lab_orders").select("id", { count: "exact", head: true }).eq("status", "Pending"),
+          supabase.from("patient_vitals").select("id", { count: "exact", head: true }).in("risk_level", ["High Risk", "Critical"]),
           supabase.from("audit_logs").select("id, action, username, table_name, created_at").order("created_at", { ascending: false }).limit(8),
         ]);
 
-      setProfile(profileRes.data);
+      const role = normalizeRole(profileRes.data?.role);
+      const loadedProfile = profileRes.data
+        ? {
+            role,
+            full_name: profileRes.data.full_name ?? undefined,
+            username: profileRes.data.username,
+          }
+        : null;
+
+      setProfile(loadedProfile);
       setActivity(auditRes.data ?? []);
-      setKpis([
-        {
-          label: "Total Patients",
-          value: patientsRes.count ?? 0,
-          sub: "Registered in MedOS",
-          icon: Users,
-          color: "text-emerald-400",
-          href: "/dashboard/patients",
-          trend: "+4 this week",
-        },
-        {
-          label: "Scheduled Appointments",
-          value: appointmentsRes.count ?? 0,
-          sub: "Active bookings today",
-          icon: CalendarDays,
-          color: "text-med-teal",
-          href: "/dashboard/appointments",
-        },
-        {
-          label: "Low Stock Drugs",
-          value: inventoryRes.count ?? 0,
-          sub: "Items below threshold",
-          icon: Pill,
-          color: "text-amber-400",
-          href: "/dashboard/pharmacy",
-        },
-        {
-          label: "Pending Lab Tests",
-          value: labRes.count ?? 0,
-          sub: "Awaiting results",
-          icon: FlaskConical,
-          color: "text-med-accent",
-          href: "/dashboard/lab",
-        },
-      ]);
+
+      if (role === "patient") {
+        const { data: patient } = await supabase
+          .from("patients")
+          .select("id, name, personal_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        setPatientRecord(patient ?? null);
+
+        if (!patient) {
+          setKpis([
+            {
+              label: "Care Profile",
+              value: "Pending",
+              sub: "Your patient file is not linked yet",
+              icon: AlertCircle,
+              color: "text-amber-400",
+              href: "/dashboard/settings",
+            },
+            {
+              label: "Portal Role",
+              value: getRoleLabel(role),
+              sub: "Profile-only access is active",
+              icon: CheckCircle2,
+              color: "text-emerald-400",
+              href: "/dashboard/settings",
+            },
+          ]);
+        } else {
+          const [patientAppointments, patientPrescriptions, patientBills, latestVitals] =
+            await Promise.all([
+              supabase.from("appointments").select("id", { count: "exact", head: true }).eq("patient_id", patient.id).eq("status", "Scheduled"),
+              supabase.from("prescriptions").select("id", { count: "exact", head: true }).eq("patient_id", patient.id).eq("status", "Active"),
+              supabase.from("bills").select("id", { count: "exact", head: true }).eq("patient_id", patient.id).neq("status", "Paid"),
+              supabase.from("patient_vitals").select("risk_level, mews_score").eq("patient_id", patient.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+            ]);
+
+          setKpis([
+            {
+              label: "Patient ID",
+              value: patient.personal_id,
+              sub: patient.name,
+              icon: Users,
+              color: "text-emerald-400",
+              href: "/dashboard/settings",
+            },
+            {
+              label: "Scheduled Visits",
+              value: patientAppointments.count ?? 0,
+              sub: "Upcoming appointments",
+              icon: CalendarDays,
+              color: "text-med-teal",
+              href: "/dashboard",
+            },
+            {
+              label: "Active Prescriptions",
+              value: patientPrescriptions.count ?? 0,
+              sub: "Current medication records",
+              icon: Pill,
+              color: "text-amber-400",
+              href: "/dashboard",
+            },
+            {
+              label: "Latest Risk",
+              value: latestVitals.data?.risk_level ?? "No vitals",
+              sub: latestVitals.data ? `MEWS ${latestVitals.data.mews_score}` : `${patientBills.count ?? 0} open bill(s)`,
+              icon: Activity,
+              color: latestVitals.data?.risk_level === "Critical" ? "text-red-400" : "text-med-accent",
+              href: "/dashboard",
+            },
+          ]);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      setPatientRecord(null);
+      setKpis(buildRoleKpis(role, {
+        patients: patientsRes.count ?? 0,
+        appointments: appointmentsRes.count ?? 0,
+        lowStock: inventoryRes.count ?? 0,
+        pendingLabs: labRes.count ?? 0,
+        highRiskVitals: vitalsRes.count ?? 0,
+      }));
       setLoading(false);
     };
     load();
-  }, []);
+  }, [supabase]);
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -159,12 +338,16 @@ export default function DashboardOverview() {
     return "Good evening";
   };
 
-  const quickActions = [
-    { label: "Run AI Triage", href: "/dashboard/triage", icon: BrainCircuit, color: "from-med-teal to-sky-600" },
-    { label: "New Appointment", href: "/dashboard/appointments", icon: CalendarDays, color: "from-med-accent to-violet-600" },
-    { label: "Add Patient", href: "/dashboard/patients", icon: Users, color: "from-emerald-500 to-teal-600" },
-    { label: "View Reports", href: "/dashboard/finance", icon: TrendingUp, color: "from-amber-500 to-orange-600" },
-  ];
+  const role = profile?.role ?? "patient";
+  const quickActions = getAllowedDashboardRoutes(role)
+    .filter((route) => route.key !== "overview")
+    .slice(0, 4)
+    .map((route) => ({
+      label: route.key === "settings" && role === "patient" ? "Update Profile" : route.label,
+      href: route.href,
+      icon: ACTION_ICONS[route.key],
+      color: ACTION_COLORS[route.key],
+    }));
 
   return (
     <div className="space-y-8">
@@ -178,7 +361,11 @@ export default function DashboardOverview() {
           👋
         </h1>
         <p className="text-slate-400 text-sm">
-          Here&apos;s what&apos;s happening in your hospital today.
+          {role === "patient"
+            ? patientRecord
+              ? `Your care profile is linked to ${patientRecord.personal_id}.`
+              : "Your patient file is waiting to be linked by the hospital team."
+            : `${getRoleLabel(role)} workspace summary for today's hospital operations.`}
         </p>
       </div>
 

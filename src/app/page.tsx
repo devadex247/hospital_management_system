@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
+import { assessTriage, type TriageRiskLevel } from '@/lib/triage'
 import {
   Activity,
   LayoutDashboard,
@@ -11,98 +12,81 @@ import {
   FlaskConical,
   Scan,
   DollarSign,
-  UserCog,
   ShieldCheck,
   Heart,
   ArrowRight,
   LogIn,
   UserPlus,
-  ShieldAlert,
   Sparkles,
   Info,
-  CheckCircle2,
-  Award
+  Award,
+  Building2,
+  Stethoscope,
+  ClipboardList,
+  UserRound,
 } from 'lucide-react'
 
-// MEWS Calculation helpers
-function calcMEWS(hr: number, spo2: number, temp: number): number {
-  let score = 0
-  // Heart rate
-  if (hr < 40 || hr > 130) score += 3
-  else if (hr < 50 || hr > 110) score += 2
-  else if (hr < 60 || hr > 100) score += 1
-
-  // SpO2
-  if (spo2 < 85) score += 3
-  else if (spo2 < 90) score += 2
-  else if (spo2 < 95) score += 1
-
-  // Temperature
-  if (temp < 35 || temp > 40) score += 2
-  else if (temp < 36 || temp > 38.5) score += 1
-
-  return score
-}
-
-function getMEWSRisk(score: number): { level: string; color: string; bg: string; border: string; text: string; rec: string } {
-  if (score <= 2) {
+function getLandingRisk(level: TriageRiskLevel): { color: string; bg: string; text: string } {
+  if (level === 'Low Risk') {
     return {
-      level: 'Low Risk',
       color: '#10b981',
       bg: 'rgba(16, 185, 129, 0.1)',
-      border: 'border-emerald-500/20',
       text: 'text-emerald-400',
-      rec: 'Continue standard routine observation. Re-assess vitals in 4-6 hours.'
     }
-  } else if (score <= 4) {
+  } else if (level === 'Moderate Risk') {
     return {
-      level: 'Moderate Risk',
       color: '#f59e0b',
       bg: 'rgba(245, 158, 11, 0.1)',
-      border: 'border-amber-500/20',
       text: 'text-amber-400',
-      rec: 'Increase vitals monitoring frequency to every 2 hours. Inform the attending ward doctor.'
     }
-  } else if (score <= 6) {
+  } else if (level === 'High Risk') {
     return {
-      level: 'High Risk',
       color: '#f97316',
       bg: 'rgba(249, 115, 22, 0.1)',
-      border: 'border-orange-500/20',
       text: 'text-orange-400',
-      rec: 'Urgent medical review required. Mobilize senior clinician and prepare resuscitation tray.'
     }
   } else {
     return {
-      level: 'Critical Risk (Emergency)',
       color: '#ef4444',
       bg: 'rgba(239, 68, 68, 0.1)',
-      border: 'border-red-500/20',
       text: 'text-red-400',
-      rec: 'EMERGENCY: Immediate clinical escalation. Direct specialist assessment and prepare ICU pathway.'
     }
   }
 }
 
+const ROLE_PREVIEW = [
+  {
+    icon: Building2,
+    label: 'Admin',
+    copy: 'Hospital setup, staff invites, finance, audit, and full operations visibility.',
+  },
+  {
+    icon: Stethoscope,
+    label: 'Doctor',
+    copy: 'Patients, appointments, lab, radiology, and AI-assisted triage in one workspace.',
+  },
+  {
+    icon: ClipboardList,
+    label: 'Staff',
+    copy: 'Front-desk scheduling, patient intake, pharmacy stock, lab, and imaging workflows.',
+  },
+  {
+    icon: UserRound,
+    label: 'Patient',
+    copy: 'A focused portal for profile status and care-summary visibility.',
+  },
+]
+
 export default function LandingPage() {
-  // Interactive Triage Demo States
   const [hr, setHr] = useState(75)
   const [spo2, setSpo2] = useState(98)
   const [temp, setTemp] = useState(36.8)
-  const [mewsScore, setMewsScore] = useState(0)
 
-  useEffect(() => {
-    setMewsScore(calcMEWS(hr, spo2, temp))
-  }, [hr, spo2, temp])
-
-  const risk = getMEWSRisk(mewsScore)
+  const assessment = assessTriage({ heartRate: hr, spo2, temperature: temp })
+  const risk = getLandingRisk(assessment.riskLevel)
 
   return (
     <div className="relative min-h-screen bg-med-bg overflow-hidden flex flex-col justify-between">
-      {/* Background Decorative Glows */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full glow-bg-teal -z-10" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full glow-bg-indigo -z-10" />
-
       {/* Navigation Header */}
       <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
@@ -110,9 +94,9 @@ export default function LandingPage() {
             <Activity className="w-6 h-6 stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white leading-none">
+            <span className="text-xl font-bold tracking-tight text-white leading-none">
               MedOS <span className="text-med-teal font-extrabold">AI</span>
-            </h1>
+            </span>
             <span className="text-xs text-slate-400 font-semibold tracking-wider uppercase">Nigerian Clinical OS</span>
           </div>
         </div>
@@ -140,15 +124,15 @@ export default function LandingPage() {
         {/* Hero Copy */}
         <div className="lg:col-span-6 flex flex-col gap-6 text-left">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-med-teal/10 border border-med-teal/20 text-med-teal text-xs font-semibold uppercase tracking-wider w-fit">
-            <Award className="w-3.5 h-3.5" /> 100% Nigerian Compliance & Roster Frameworks
+            <Award className="w-3.5 h-3.5" /> RBAC, audit trails, and AI triage for hospital teams
           </div>
 
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1]">
-            Next-gen clinical workflows, <span className="text-transparent bg-clip-text bg-gradient-to-r from-med-teal to-med-accent">precision triage.</span>
-          </h2>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1]">
+            MedOS <span className="text-transparent bg-clip-text bg-gradient-to-r from-med-teal to-med-accent">AI</span>
+          </h1>
 
           <p className="text-base md:text-lg text-slate-400 leading-relaxed max-w-xl">
-            A premium, localized hospital registry and predictive clinical assistant custom-tailored for Nigerian healthcare facilities. Track diagnostics, automate pharmacy inventory, manage Naira invoicing, and maintain compliance seamlessly.
+            A role-aware hospital workspace for patient intake, appointments, pharmacy stock, lab orders, radiology records, Naira billing, audit logs, and clinical triage support.
           </p>
 
           <div className="flex flex-wrap items-center gap-4 mt-2">
@@ -165,6 +149,18 @@ export default function LandingPage() {
             >
               Join with Token
             </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 max-w-xl">
+            {ROLE_PREVIEW.map((role) => (
+              <div key={role.label} className="border border-white/8 bg-slate-950/30 rounded-lg p-3 flex gap-3">
+                <role.icon className="w-4 h-4 text-med-teal flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-white">{role.label}</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">{role.copy}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -250,7 +246,7 @@ export default function LandingPage() {
                   style={{ backgroundColor: risk.color }}
                 />
                 <div>
-                  <h4 className="text-sm font-bold text-white leading-none">{risk.level}</h4>
+                  <h4 className="text-sm font-bold text-white leading-none">{assessment.riskLevel}</h4>
                   <span className="text-xxs text-slate-400">MEWS Score Algorithm</span>
                 </div>
               </div>
@@ -259,7 +255,7 @@ export default function LandingPage() {
                   className="text-2xl font-black font-mono tracking-tight"
                   style={{ color: risk.color }}
                 >
-                  {mewsScore}
+                  {assessment.mewsScore}
                 </span>
                 <span className="text-xs text-slate-500 font-bold"> / 12</span>
               </div>
@@ -271,7 +267,7 @@ export default function LandingPage() {
                 <div
                   className="h-full rounded-full transition-all duration-500 ease-out"
                   style={{
-                    width: `${(mewsScore / 12) * 100}%`,
+                    width: `${(assessment.mewsScore / 12) * 100}%`,
                     backgroundColor: risk.color
                   }}
                 />
@@ -281,7 +277,7 @@ export default function LandingPage() {
             {/* Clinical Recommendation Text */}
             <div className="text-xs text-slate-300 bg-slate-950/30 rounded-lg p-3 border border-white/5 flex gap-2">
               <Info className="w-4 h-4 text-med-teal flex-shrink-0 mt-0.5" />
-              <p className="leading-relaxed">{risk.rec}</p>
+              <p className="leading-relaxed">{assessment.recommendation}</p>
             </div>
           </div>
         </div>

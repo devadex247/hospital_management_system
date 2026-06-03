@@ -87,7 +87,6 @@ export default function AdminSignup() {
   if (successData) {
     return (
       <div className="min-h-screen bg-med-bg relative flex items-center justify-center p-6 overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full glow-bg-teal -z-10" />
         <div className="glass-panel max-w-lg w-full p-8 rounded-2xl border border-med-green/20 relative shadow-2xl flex flex-col gap-6 text-center">
           <div className="p-3.5 rounded-full bg-med-green/10 text-med-green w-fit mx-auto border border-med-green/20">
             <ShieldCheck className="w-12 h-12" />
@@ -119,9 +118,6 @@ export default function AdminSignup() {
 
   return (
     <div className="min-h-screen bg-med-bg relative py-12 px-6 flex items-center justify-center overflow-hidden">
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full glow-bg-teal -z-10" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full glow-bg-indigo -z-10" />
-
       <div className="glass-panel max-w-2xl w-full p-8 md:p-10 rounded-2xl relative shadow-2xl border border-white/5 flex flex-col gap-8">
         {/* Header */}
         <div className="flex flex-col gap-3 text-center items-center">

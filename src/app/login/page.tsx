@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Activity, Mail, Lock, Key, ClipboardList, Eye, EyeOff, Loader2, LogIn, ShieldAlert } from 'lucide-react'
-
-type LoginRole = 'owner_admin' | 'doctor' | 'staff' | 'patient'
+import { getDashboardRedirectPath, getRoleLabel, normalizeRole } from '@/lib/rbac'
+import { Activity, Mail, Lock, Eye, EyeOff, Loader2, LogIn, ShieldAlert } from 'lucide-react'
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'An unexpected database error occurred.'
@@ -16,30 +15,28 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
-  // Form Fields
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<LoginRole>('patient')
-  const [accessToken, setAccessToken] = useState('')
 
-  // State controls
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [infoMsg, setInfoMsg] = useState('')
   const inactivityInfoMsg =
     searchParams.get('reason') === 'inactivity'
       ? 'You have been logged out due to 15 minutes of inactivity.'
       : ''
-  const displayInfoMsg = infoMsg || inactivityInfoMsg
+  const profileInfoMsg =
+    searchParams.get('reason') === 'profile'
+      ? 'Your session profile could not be loaded. Please sign in again.'
+      : ''
+  const displayInfoMsg = inactivityInfoMsg || profileInfoMsg
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setErrorMsg('')
-    setInfoMsg('')
 
     if (!email || !password) {
       setErrorMsg('Please enter both email and password.')
@@ -47,14 +44,7 @@ function LoginForm() {
       return
     }
 
-    if (role !== 'patient' && !accessToken) {
-      setErrorMsg('Hospital access token is required for workspace accounts.')
-      setLoading(false)
-      return
-    }
-
     try {
-      // 1. Sign In via Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -65,62 +55,47 @@ function LoginForm() {
       }
 
       const user = authData.user
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .select('role')
+        .select('role, account_status')
         .eq('id', user.id)
         .maybeSingle()
 
-      const userRole = profileData?.role || user.user_metadata?.role || 'patient'
-
-      // 2. Validate Role Scoping Matches
-      // Allow general matching for admins consistent with Flask
-      const isAdminMatch = ['admin', 'owner_admin', 'hospital_admin'].includes(role) && ['admin', 'owner_admin', 'hospital_admin'].includes(userRole)
-      if (userRole !== role && !isAdminMatch) {
-        // Sign out since role didn't match selection
+      if (profileError || !profileData) {
         await supabase.auth.signOut()
-        throw new Error(`This account is registered as a ${userRole.replace('_', ' ')}, not a ${role.replace('_', ' ')}.`)
+        throw new Error('Your user profile could not be found. Contact your hospital administrator.')
       }
 
-      // 3. For workspace accounts, validate the Hospital Access Token
-      if (role !== 'patient') {
-        const cleanToken = accessToken.trim().toUpperCase()
-
-        const { data: tokenData, error: tokenError } = await supabase
-          .from('hospital_access_tokens')
-          .select('*, hospitals(*)')
-          .eq('access_token', cleanToken)
-          .eq('is_active', true)
-          .single()
-
-        if (tokenError || !tokenData) {
-          await supabase.auth.signOut()
-          throw new Error('Hospital access token is invalid, rotated, or inactive.')
-        }
-
-        // Verify that the user has a membership at this specific hospital
-        const { data: membershipData, error: membershipError } = await supabase
-          .from('hospital_memberships')
-          .select('*')
-          .eq('hospital_id', tokenData.hospital_id)
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .single()
-
-        if (membershipError || !membershipData) {
-          await supabase.auth.signOut()
-          throw new Error(`Your account does not belong to the hospital workspace associated with token ${cleanToken}.`)
-        }
+      if (profileData.account_status !== 'active') {
+        await supabase.auth.signOut()
+        throw new Error('This account is inactive. Contact your hospital administrator.')
       }
 
-      // 4. Session established successfully. Redirect based on role.
-      // Redirect parameter support included
+      const userRole = normalizeRole(profileData.role ?? user.user_metadata?.role)
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('hospital_memberships')
+        .select('id, status, hospitals(name, is_active)')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .limit(1)
+
+      const membership = membershipData?.[0]
+      const hospital = Array.isArray(membership?.hospitals)
+        ? membership?.hospitals[0]
+        : membership?.hospitals
+
+      if (membershipError || !membership) {
+        await supabase.auth.signOut()
+        throw new Error(`${getRoleLabel(userRole)} accounts must belong to an active hospital workspace.`)
+      }
+
+      if (hospital && hospital.is_active === false) {
+        await supabase.auth.signOut()
+        throw new Error('This hospital workspace is inactive. Contact the workspace owner.')
+      }
+
       const redirectPath = searchParams.get('redirect')
-      if (redirectPath) {
-        router.push(redirectPath)
-      } else {
-        router.push(role === 'patient' ? '/dashboard/appointments' : '/dashboard')
-      }
+      router.push(getDashboardRedirectPath(userRole, redirectPath))
       router.refresh()
     } catch (err: unknown) {
       setErrorMsg(getErrorMessage(err))
@@ -131,10 +106,6 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen bg-med-bg relative py-12 px-6 flex items-center justify-center overflow-hidden">
-      {/* Glow Rings */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full glow-bg-teal -z-10" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full glow-bg-indigo -z-10" />
-
       <div className="glass-panel max-w-md w-full p-8 rounded-2xl relative shadow-2xl border border-white/5 flex flex-col gap-6">
         {/* Logo and Header */}
         <div className="flex flex-col gap-2.5 text-center items-center">
@@ -145,7 +116,7 @@ function LoginForm() {
             <span className="text-sm font-bold text-slate-300">MedOS AI</span>
           </Link>
           <h2 className="text-2xl font-black text-white tracking-tight leading-none">Sign In</h2>
-          <p className="text-slate-400 text-xs">Enter credentials to enter your medical workspace.</p>
+          <p className="text-slate-400 text-xs">Enter your credentials to enter your medical workspace.</p>
         </div>
 
         {/* Display Alert Messages */}
@@ -164,23 +135,6 @@ function LoginForm() {
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-slate-400 font-semibold">Workspace Role *</label>
-            <div className="relative">
-              <ClipboardList className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as LoginRole)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl text-sm appearance-none bg-slate-900/80 cursor-pointer"
-              >
-                <option value="patient">Patient Portal</option>
-                <option value="doctor">Doctor Portal</option>
-                <option value="staff">Staff Portal</option>
-                <option value="owner_admin">Owner Administrator</option>
-              </select>
-            </div>
-          </div>
-
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-slate-400 font-semibold">Email Address *</label>
             <div className="relative">
@@ -217,24 +171,6 @@ function LoginForm() {
               </button>
             </div>
           </div>
-
-          {/* Conditional Token Input based on selected Role */}
-          {role !== 'patient' && (
-            <div className="flex flex-col gap-1.5 animate-fadeIn">
-              <label className="text-xs text-slate-400 font-semibold">Hospital Access Token *</label>
-              <div className="relative">
-                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  type="text"
-                  required
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value.toUpperCase())}
-                  placeholder="8-character invite code"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-mono tracking-widest text-med-teal font-bold placeholder:font-sans placeholder:tracking-normal placeholder:font-normal"
-                />
-              </div>
-            </div>
-          )}
 
           <button
             type="submit"

@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import AutoLogoutHandler from "@/components/AutoLogoutHandler";
+import {
+  DASHBOARD_ROUTES,
+  ROLE_COLORS,
+  getAllowedDashboardRoutes,
+  getDashboardRouteForPath,
+  getRoleLabel,
+  normalizeRole,
+  type DashboardRouteKey,
+  type Role,
+} from "@/lib/rbac";
 import {
   LayoutDashboard,
   Users,
@@ -24,79 +34,23 @@ import {
   Settings,
 } from "lucide-react";
 
-// ─── nav items scoped by role ───────────────────────────────────────────────
-const NAV_ITEMS = [
-  {
-    icon: LayoutDashboard,
-    label: "Overview",
-    href: "/dashboard",
-    roles: ["owner_admin", "hospital_admin", "doctor", "staff", "patient"],
-  },
-  {
-    icon: BrainCircuit,
-    label: "AI Triage",
-    href: "/dashboard/triage",
-    roles: ["owner_admin", "hospital_admin", "doctor", "staff"],
-  },
-  {
-    icon: Users,
-    label: "Patients",
-    href: "/dashboard/patients",
-    roles: ["owner_admin", "hospital_admin", "doctor", "staff"],
-  },
-  {
-    icon: CalendarDays,
-    label: "Appointments",
-    href: "/dashboard/appointments",
-    roles: ["owner_admin", "hospital_admin", "doctor", "staff"],
-  },
-  {
-    icon: Pill,
-    label: "Pharmacy",
-    href: "/dashboard/pharmacy",
-    roles: ["owner_admin", "hospital_admin", "staff"],
-  },
-  {
-    icon: FlaskConical,
-    label: "Lab",
-    href: "/dashboard/lab",
-    roles: ["owner_admin", "hospital_admin", "doctor", "staff"],
-  },
-  {
-    icon: Scan,
-    label: "Radiology",
-    href: "/dashboard/radiology",
-    roles: ["owner_admin", "hospital_admin", "doctor", "staff"],
-  },
-  {
-    icon: DollarSign,
-    label: "Finance",
-    href: "/dashboard/finance",
-    roles: ["owner_admin", "hospital_admin"],
-  },
-  {
-    icon: UserCog,
-    label: "Staff",
-    href: "/dashboard/staff",
-    roles: ["owner_admin", "hospital_admin"],
-  },
-  {
-    icon: ShieldCheck,
-    label: "Audit Logs",
-    href: "/dashboard/audit",
-    roles: ["owner_admin", "hospital_admin"],
-  },
-  {
-    icon: Settings,
-    label: "Settings",
-    href: "/dashboard/settings",
-    roles: ["owner_admin", "hospital_admin", "doctor", "staff", "patient"],
-  },
-];
+const NAV_ICONS: Record<DashboardRouteKey, React.ElementType> = {
+  overview: LayoutDashboard,
+  triage: BrainCircuit,
+  patients: Users,
+  appointments: CalendarDays,
+  pharmacy: Pill,
+  lab: FlaskConical,
+  radiology: Scan,
+  finance: DollarSign,
+  staff: UserCog,
+  audit: ShieldCheck,
+  settings: Settings,
+};
 
 type Profile = {
   username: string;
-  role: string;
+  role: Role;
   full_name?: string;
 };
 
@@ -107,7 +61,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,36 +80,30 @@ export default function DashboardLayout({
         .select("username, role, full_name")
         .eq("id", user.id)
         .single();
-      setProfile(data);
+      if (!data) {
+        await supabase.auth.signOut();
+        router.push("/login?reason=profile");
+        return;
+      }
+
+      setProfile({
+        username: data.username,
+        full_name: data.full_name ?? undefined,
+        role: normalizeRole(data.role),
+      });
       setLoading(false);
     };
     loadProfile();
-  }, []);
+  }, [router, supabase]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push("/login");
   };
 
-  const allowedNav = NAV_ITEMS.filter(
-    (item) => !profile || item.roles.includes(profile.role)
-  );
-
-  const roleColor: Record<string, string> = {
-    owner_admin: "text-med-accent",
-    hospital_admin: "text-med-teal",
-    doctor: "text-emerald-400",
-    staff: "text-amber-400",
-    patient: "text-slate-300",
-  };
-
-  const roleLabel: Record<string, string> = {
-    owner_admin: "Owner Admin",
-    hospital_admin: "Hospital Admin",
-    doctor: "Doctor",
-    staff: "Staff",
-    patient: "Patient",
-  };
+  const role = profile?.role ?? "patient";
+  const allowedNav = getAllowedDashboardRoutes(role);
+  const activeRoute = getDashboardRouteForPath(pathname) ?? DASHBOARD_ROUTES[0];
 
   if (loading) {
     return (
@@ -197,6 +145,7 @@ export default function DashboardLayout({
           <nav className="flex-1 py-4 overflow-y-auto overflow-x-hidden">
             <ul className="space-y-0.5 px-2">
               {allowedNav.map((item) => {
+                const Icon = NAV_ICONS[item.key];
                 const active =
                   item.href === "/dashboard"
                     ? pathname === "/dashboard"
@@ -220,7 +169,7 @@ export default function DashboardLayout({
                       {active && (
                         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-med-teal rounded-r-full" />
                       )}
-                      <item.icon
+                      <Icon
                         size={18}
                         className={`flex-shrink-0 transition-transform duration-200 ${
                           active ? "text-med-teal" : "group-hover:scale-110"
@@ -254,10 +203,10 @@ export default function DashboardLayout({
                   </p>
                   <p
                     className={`text-xs truncate ${
-                      roleColor[profile?.role ?? ""] ?? "text-slate-400"
+                      ROLE_COLORS[role] ?? "text-slate-400"
                     }`}
                   >
-                    {roleLabel[profile?.role ?? ""] ?? profile?.role}
+                    {getRoleLabel(role)}
                   </p>
                 </div>
                 <button
@@ -297,9 +246,7 @@ export default function DashboardLayout({
               <span className="text-slate-600">MedOS</span>
               <ChevronRight size={14} className="text-slate-700" />
               <span className="text-slate-200 capitalize">
-                {pathname === "/dashboard"
-                  ? "Overview"
-                  : pathname.split("/").pop()}
+                {activeRoute.label}
               </span>
             </div>
 

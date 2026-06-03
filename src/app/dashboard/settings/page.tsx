@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getRoleLabel } from "@/lib/rbac";
 import { Settings, User, Lock, LogOut, Loader2, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -54,14 +55,6 @@ export default function SettingsPage() {
     router.push("/login");
   };
 
-  const roleLabel: Record<string, string> = {
-    owner_admin: "Owner Admin",
-    hospital_admin: "Hospital Admin",
-    doctor: "Doctor",
-    staff: "Staff",
-    patient: "Patient",
-  };
-
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
@@ -85,7 +78,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-white">{profile.full_name || profile.username}</p>
-              <p className="text-xs text-slate-400">@{profile.username} · {roleLabel[profile.role] ?? profile.role}</p>
+              <p className="text-xs text-slate-400">@{profile.username} · {getRoleLabel(profile.role)}</p>
               <p className="text-xs text-slate-500 mt-0.5">{profile.email}</p>
             </div>
           </div>
