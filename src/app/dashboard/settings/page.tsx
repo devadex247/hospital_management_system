@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getRoleLabel } from "@/lib/rbac";
 import { Settings, User, Lock, LogOut, Loader2, CheckCircle2, Key, Copy, MessageCircle } from "lucide-react";
@@ -30,6 +30,47 @@ export default function SettingsPage() {
   const [pwSaved, setPwSaved] = useState(false);
   const [error, setError] = useState("");
 
+  const loadInviteTokenInfo = useCallback(async () => {
+    setInviteLoading(true);
+    setInviteError("");
+    setInviteToken(null);
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12000);
+
+    try {
+      const response = await fetch("/api/hospital/invite-token", {
+        signal: controller.signal,
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      const result = contentType.includes("application/json")
+        ? await response.json()
+        : { error: await response.text() };
+
+      if (!response.ok) {
+        throw new Error(result.error || "Invite token could not be loaded.");
+      }
+
+      if (!result.token || !result.hospitalName || !result.signupUrl) {
+        throw new Error("Invite token response was incomplete.");
+      }
+
+      setInviteToken(result);
+    } catch (err) {
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      setInviteError(
+        isAbort
+          ? "Invite token request timed out. Try again or refresh the page."
+          : err instanceof Error
+            ? err.message
+            : "Invite token could not be loaded."
+      );
+    } finally {
+      window.clearTimeout(timeout);
+      setInviteLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -40,23 +81,13 @@ export default function SettingsPage() {
         setForm({ full_name: data.full_name ?? "", phone_number: data.phone_number ?? "" });
 
         if (data.role === "owner_admin" || data.role === "hospital_admin") {
-          setInviteLoading(true);
-          const response = await fetch("/api/hospital/invite-token");
-          const result = await response.json();
-
-          if (!response.ok) {
-            setInviteError(result.error || "Invite token could not be loaded.");
-          } else {
-            setInviteToken(result);
-          }
-
-          setInviteLoading(false);
+          await loadInviteTokenInfo();
         }
       }
     };
     load();
     setAppOrigin(window.location.origin);
-  }, [supabase]);
+  }, [loadInviteTokenInfo, supabase]);
 
   const inviteUrl = inviteToken
     ? `${appOrigin}${inviteToken.signupUrl}`
@@ -170,9 +201,19 @@ export default function SettingsPage() {
                   <Loader2 size={16} className="animate-spin" /> Loading invite token...
                 </div>
               ) : inviteError ? (
-                <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-                  {inviteError}
-                </p>
+                <div className="space-y-3">
+                  <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                    {inviteError}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={loadInviteTokenInfo}
+                    className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-100 transition-all"
+                  >
+                    <Loader2 size={16} className={inviteLoading ? "animate-spin" : ""} />
+                    Retry Token Load
+                  </button>
+                </div>
               ) : inviteToken ? (
                 <>
                   <div className="rounded-lg bg-slate-950/60 border border-white/8 px-4 py-3">
