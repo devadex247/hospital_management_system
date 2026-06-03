@@ -13,6 +13,34 @@ type InviteTokenInfo = {
   signupUrl: string;
 };
 
+type InviteTokenResponse = Partial<InviteTokenInfo> & {
+  error?: string;
+};
+
+type HospitalRelation = {
+  name?: string;
+} | {
+  name?: string;
+}[] | null;
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.name === "AbortError"
+      ? "Invite token request timed out. Try again or refresh the page."
+      : error.message;
+  }
+
+  return "Invite token could not be loaded.";
+}
+
+function getReadableHttpError(status: number, body: string) {
+  if (status === 404 || body.trim().startsWith("<!DOCTYPE html")) {
+    return "Invite token endpoint was not found in the running app. The deployed build may still be updating.";
+  }
+
+  return "Invite token endpoint did not return a readable JSON response.";
+}
+
 export default function SettingsPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -30,6 +58,54 @@ export default function SettingsPage() {
   const [pwSaved, setPwSaved] = useState(false);
   const [error, setError] = useState("");
 
+  const loadInviteTokenFromSupabase = useCallback(async (): Promise<InviteTokenInfo> => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      throw new Error("Please sign in again to load the invite token.");
+    }
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("hospital_memberships")
+      .select("hospital_id, hospitals(name)")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipError || !membership) {
+      throw new Error("No active hospital workspace membership was found.");
+    }
+
+    const { data: token, error: tokenError } = await supabase
+      .from("hospital_access_tokens")
+      .select("access_token, created_at")
+      .eq("hospital_id", membership.hospital_id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (tokenError || !token) {
+      throw new Error("No active invite token was found for this hospital.");
+    }
+
+    const hospitalRelation = membership.hospitals as HospitalRelation;
+    const hospital = Array.isArray(hospitalRelation)
+      ? hospitalRelation[0]
+      : hospitalRelation;
+
+    return {
+      token: token.access_token,
+      createdAt: token.created_at,
+      hospitalName: hospital?.name ?? "Hospital Workspace",
+      signupUrl: "/signup/join",
+    };
+  }, [supabase]);
+
   const loadInviteTokenInfo = useCallback(async () => {
     setInviteLoading(true);
     setInviteError("");
@@ -39,37 +115,41 @@ export default function SettingsPage() {
     const timeout = window.setTimeout(() => controller.abort(), 12000);
 
     try {
-      const response = await fetch("/api/hospital/invite-token", {
-        signal: controller.signal,
-      });
+      const response = await fetch("/api/hospital/invite-token", { signal: controller.signal });
       const contentType = response.headers.get("content-type") ?? "";
-      const result = contentType.includes("application/json")
+      const result: InviteTokenResponse = contentType.includes("application/json")
         ? await response.json()
-        : { error: await response.text() };
+        : { error: getReadableHttpError(response.status, await response.text()) };
 
       if (!response.ok) {
         throw new Error(result.error || "Invite token could not be loaded.");
       }
 
-      if (!result.token || !result.hospitalName || !result.signupUrl) {
+      if (!result.token || !result.createdAt || !result.hospitalName || !result.signupUrl) {
         throw new Error("Invite token response was incomplete.");
       }
 
-      setInviteToken(result);
+      setInviteToken({
+        token: result.token,
+        createdAt: result.createdAt,
+        hospitalName: result.hospitalName,
+        signupUrl: result.signupUrl,
+      });
     } catch (err) {
-      const isAbort = err instanceof Error && err.name === "AbortError";
-      setInviteError(
-        isAbort
-          ? "Invite token request timed out. Try again or refresh the page."
-          : err instanceof Error
-            ? err.message
-            : "Invite token could not be loaded."
-      );
+      const primaryError = getErrorMessage(err);
+
+      try {
+        const fallbackToken = await loadInviteTokenFromSupabase();
+        setInviteToken(fallbackToken);
+        return;
+      } catch (fallbackErr) {
+        setInviteError(`${primaryError} ${getErrorMessage(fallbackErr)}`);
+      }
     } finally {
       window.clearTimeout(timeout);
       setInviteLoading(false);
     }
-  }, []);
+  }, [loadInviteTokenFromSupabase]);
 
   useEffect(() => {
     const load = async () => {
